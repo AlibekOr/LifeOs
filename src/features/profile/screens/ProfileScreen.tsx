@@ -1,11 +1,20 @@
-import { TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import { useAuthStore } from '../../../services/storage/authStore.ts';
 import { authService } from '../../../services/auth.service.ts';
 import { useProfile } from '../hooks/useProfile.ts';
+import ReminderSettingsCard from '../components/ReminderSettingsCard.tsx';
 
 const ProfileScreen = () => {
+  const handleLogOut = async () => {
+    const { error } = await authService.signOut();
+    if (error) {
+      console.error('[Profile] Sign out failed', error);
+      Alert.alert('Could not log out', 'Please try again.');
+    }
+  };
+
   const user = useAuthStore(state => state.user);
   const { data: profile } = useProfile();
 
@@ -18,7 +27,10 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-life-bg" edges={['top']}>
-      <View className="gap-life-5 px-life-5 pb-life-10 pt-life-3">
+      <ScrollView
+        contentContainerClassName="gap-life-5 px-life-5 pb-life-10 pt-life-3"
+        showsVerticalScrollIndicator={false}
+      >
         <LifeText variant="h2" className="font-bold">
           Profile
         </LifeText>
@@ -41,16 +53,18 @@ const ProfileScreen = () => {
           </View>
         </View>
 
+        <ReminderSettingsCard />
+
         <TouchableOpacity
           accessibilityRole="button"
           className="items-center rounded-life-md border border-life-border bg-life-surface p-life-4"
-          onPress={() => authService.signOut()}
+          onPress={handleLogOut}
         >
           <LifeText variant="body" className="font-semibold text-life-danger">
             Log Out
           </LifeText>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };

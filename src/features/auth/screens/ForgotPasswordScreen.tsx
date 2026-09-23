@@ -7,6 +7,7 @@ import LifeText from '../../../shared/components/Typography/LifeText';
 import LifeInput from '../../../shared/components/Input/LifeInput.tsx';
 import { ForgetPassScreenProps } from './type.ts';
 import { authService } from '../../../services/auth.service.ts';
+import KeyboardAwareContent from '../components/KeyboardAwareContent.tsx';
 
 const arrowLeftIcon = require('../../../shared/assets/login/arrow-left.png');
 
@@ -15,12 +16,12 @@ const ForgotPasswordScreen = ({ navigation }: ForgetPassScreenProps) => {
   const [loading, setLoading] = useState(false);
 
   const handleReset = async () => {
-    if (!email) {
+    if (!email.trim()) {
       Alert.alert('Enter your email address');
       return;
     }
     setLoading(true);
-    const { error } = await authService.resetPassword(email);
+    const { error } = await authService.resetPassword(email.trim());
     setLoading(false);
     if (error) {
       Alert.alert(error);
@@ -42,7 +43,7 @@ const ForgotPasswordScreen = ({ navigation }: ForgetPassScreenProps) => {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-1 justify-center px-life-6">
+      <KeyboardAwareContent>
         <View className="gap-life-2">
           <LifeText variant="h1" className="font-bold">
             Forgot password?
@@ -70,7 +71,7 @@ const ForgotPasswordScreen = ({ navigation }: ForgetPassScreenProps) => {
             onPress={handleReset}
           />
         </View>
-      </View>
+      </KeyboardAwareContent>
 
       <View className="items-center pb-life-4">
         <LifeText variant="bodySm" className="text-life-muted">

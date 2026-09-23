@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Image, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeButton from '../../../shared/components/Button/LifeButton.tsx';
@@ -20,65 +20,66 @@ function WelcomeAuth({ navigation }: WelcomeScreenProps) {
   };
 
   return (
-    <SafeAreaView className={'flex-1 bg-life-bg justify-around pt-3 gap-2'}>
-      <View className={'items-center gap-4 h-1/4'}>
-        <View>
+    <SafeAreaView className="flex-1 bg-life-bg">
+      {/* Scrolls on short screens instead of clipping; spreads out on tall ones. */}
+      <ScrollView
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="flex-grow justify-between gap-life-6 px-life-6 py-life-6"
+      >
+        <View className="items-center gap-life-4 pt-life-6">
           <Image source={welcomeAuthIcon} />
-        </View>
-        <View>
-          <LifeText variant={'h1'} className={'font-bold'}>
+          <LifeText variant="h1" className="font-bold">
             LifeOS
           </LifeText>
-        </View>
-        <View>
-          <LifeText variant={'bodySm'} color={'text-life-muted'}>
+          <LifeText variant="bodySm" color="text-life-muted">
             Your intelligent life operating system
           </LifeText>
         </View>
-      </View>
-      <View className={'items-center h-[320px] justify-around '}>
-        <View>
+
+        <View className="w-full items-center gap-life-4">
           <LifeButton
-            title={`Continue with Apple`}
+            title="Continue with Apple"
             onPress={() => {}}
             icon={require('../../../shared/assets/login/appleIcon.png')}
           />
-        </View>
-        <View>
           <LifeButton
             title={googleLoading ? 'Signing in...' : 'Continue with Google'}
             onPress={handleGoogleSignIn}
             disabled={googleLoading}
             icon={require('../../../shared/assets/login/g.webp')}
           />
-        </View>
-        <View className={' justify-center items-center flex-row i m-5'}>
-          <View className={'flex-1 h-[1px] bg-life-orLine'} />
-          <LifeText
-            variant={'body'}
-            className={'mr-life-3 ml-life-3 text-[#8A8A8A]'}
-          >
-            or
-          </LifeText>
-          <View className={'flex-1 h-[1px] bg-life-orLine'} />
-        </View>
-        <View>
+          <View className="w-full max-w-[362px] flex-row items-center py-life-2">
+            <View className="h-[1px] flex-1 bg-life-orLine" />
+            <LifeText
+              variant="body"
+              color="text-life-muted"
+              className="mx-life-3"
+            >
+              or
+            </LifeText>
+            <View className="h-[1px] flex-1 bg-life-orLine" />
+          </View>
           <LifeButton
             onPress={() => navigation.navigate('Login')}
-            title={'Sign in with email'}
+            title="Sign in with email"
           />
         </View>
-      </View>
-      <View className={'items-center gap-1 flex-row justify-center'}>
-        <LifeText variant={'body'} color={'text-life-muted'}>
-          New to LifeOS?
-        </LifeText>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <LifeText color={'text-life-accent'} className={'underline'}>
-            Create Account
+
+        <View className="flex-row items-center justify-center gap-life-1">
+          <LifeText variant="body" color="text-life-muted">
+            New to LifeOS?
           </LifeText>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('Register')}
+          >
+            <LifeText color="text-life-accent" className="underline">
+              Create Account
+            </LifeText>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

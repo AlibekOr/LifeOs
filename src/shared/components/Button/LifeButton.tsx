@@ -1,9 +1,14 @@
-import { Image, Text, TouchableOpacity } from 'react-native';
+import {
+  Image,
+  type ImageSourcePropType,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 type LifeButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
-  icon?: any;
+  icon?: ImageSourcePropType;
   fullWidth?: boolean;
 };
 const LifeButton = ({
@@ -18,7 +23,7 @@ const LifeButton = ({
       onPress={onPress}
       disabled={disabled}
       className={`h-[52px] ${
-        fullWidth ? 'w-full' : 'w-[362px]'
+        fullWidth ? 'w-full' : 'w-full max-w-[362px]'
       } flex-row gap-2 items-center justify-center rounded-life-lg ${
         disabled ? 'bg-life-subtle' : 'bg-life-primary'
       }`}

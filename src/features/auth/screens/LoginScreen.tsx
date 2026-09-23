@@ -7,6 +7,7 @@ import LifeText from '../../../shared/components/Typography/LifeText';
 import LifeInput from '../../../shared/components/Input/LifeInput.tsx';
 import { LoginScreenProps } from './type.ts';
 import { authService } from '../../../services/auth.service.ts';
+import KeyboardAwareContent from '../components/KeyboardAwareContent.tsx';
 
 const eyeIcon = require('../../../shared/assets/login/eye.png');
 const arrowLeftIcon = require('../../../shared/assets/login/arrow-left.png');
@@ -17,12 +18,12 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const handlePress = async () => {
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       Alert.alert('Please enter your email and password');
       return;
     }
     setLoading(true);
-    const { error } = await authService.signIn(email, password);
+    const { error } = await authService.signIn(email.trim(), password);
     setLoading(false);
     if (error) {
       Alert.alert(error);
@@ -43,7 +44,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       </View>
 
       {/* Main content */}
-      <View className="flex-1 justify-center px-life-6">
+      <KeyboardAwareContent>
         {/* Headline */}
         <View className="gap-life-2">
           <LifeText variant="h1" className="font-bold">
@@ -74,7 +75,10 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
             onChangeText={setPassword}
             rightElement={
               <TouchableOpacity
-                accessibilityLabel="Show password"
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isPasswordVisible ? 'Hide password' : 'Show password'
+                }
                 className="h-[18px] w-[18px]"
                 onPress={() => setPasswordVisible(visible => !visible)}
               >
@@ -101,7 +105,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
             onPress={handlePress}
           />
         </View>
-      </View>
+      </KeyboardAwareContent>
 
       {/* Footer */}
       <View className="items-center pb-life-4">

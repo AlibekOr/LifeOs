@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type RootStackParamList = {
   Splash: undefined;
   Auth: undefined;
@@ -9,16 +11,17 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  Notifications: undefined;
   WelcomeAuth: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
-  Tasks: undefined;
+  Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
   Goals: undefined;
   Finance: undefined;
   Profile: undefined;
+  // Reached from the Home bell; hidden from the tab bar.
+  Notifications: undefined;
 };
 
 export type FinanceStackParamList = {

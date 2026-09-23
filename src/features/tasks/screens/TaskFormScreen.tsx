@@ -93,16 +93,20 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [photo, setPhoto] = useState<PhotoState>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Populate once per task so a background refetch or sync never overwrites
+  // what the user is typing.
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (existingTask) {
+    if (existingTask && existingTask.id !== hydratedId) {
+      setHydratedId(existingTask.id);
       setTitle(existingTask.title);
       setDueDate(parseDueDate(existingTask.due_date));
       setScheduledTime(parseScheduledTime(existingTask.scheduled_time));
       setDurationMinutes(String(existingTask.duration_minutes));
       setPriorityOption(existingTask.priority ?? 'None');
     }
-  }, [existingTask]);
+  }, [existingTask, hydratedId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +118,9 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
             setPreviewUrl(url);
           }
         })
-        .catch(() => {});
+        .catch(error => {
+          console.error('[TaskForm] Failed to load attachment preview', error);
+        });
     }
     return () => {
       cancelled = true;
@@ -221,31 +227,46 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
 
     setLoading(true);
     try {
-      if (photo !== null && existingTask?.attachment_path) {
-        await taskAttachmentService
-          .deleteTaskAttachment(existingTask.attachment_path)
-          .catch(() => {});
-      }
-
       const savedTask =
         isEdit && taskId
           ? await updateTask.mutateAsync({ id: taskId, input })
           : await createTask.mutateAsync(input);
 
-      if (photo && photo !== 'removed') {
-        const path = await taskAttachmentService.uploadTaskAttachment(
-          savedTask.id,
-          photo.uri,
-        );
-        await updateTask.mutateAsync({
-          id: savedTask.id,
-          input: { attachment_path: path },
-        });
+      // The task is saved from here on. Failing to handle its photo must not
+      // look like a failed save, or a retry would create a duplicate task.
+      let photoFailed = false;
+      try {
+        if (photo && photo !== 'removed') {
+          const path = await taskAttachmentService.uploadTaskAttachment(
+            savedTask.id,
+            photo.uri,
+          );
+          await updateTask.mutateAsync({
+            id: savedTask.id,
+            input: { attachment_path: path },
+          });
+        }
+        // Remove the previous file only after the task no longer points at it.
+        if (photo !== null && existingTask?.attachment_path) {
+          await taskAttachmentService.deleteTaskAttachment(
+            existingTask.attachment_path,
+          );
+        }
+      } catch (photoError) {
+        console.error('[TaskForm] Photo update failed', photoError);
+        photoFailed = true;
       }
 
+      if (photoFailed) {
+        Alert.alert(
+          'Task saved',
+          "Your task was saved, but its photo couldn't be updated. You can edit the task to try again.",
+        );
+      }
       navigation.goBack();
     } catch (err) {
-      Alert.alert(err instanceof Error ? err.message : 'Failed to save task.');
+      console.error('[TaskForm] Failed to save task', err);
+      Alert.alert('Could not save task', 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -269,17 +290,22 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
         style: 'destructive',
         onPress: async () => {
           try {
+            await deleteTask.mutateAsync(taskId);
             if (existingTask?.attachment_path) {
+              // The task is gone; a leftover file is harmless, so don't block on it.
               await taskAttachmentService
                 .deleteTaskAttachment(existingTask.attachment_path)
-                .catch(() => {});
+                .catch(error => {
+                  console.error(
+                    '[TaskForm] Failed to delete attachment',
+                    error,
+                  );
+                });
             }
-            await deleteTask.mutateAsync(taskId);
             navigation.goBack();
           } catch (err) {
-            Alert.alert(
-              err instanceof Error ? err.message : 'Failed to delete task.',
-            );
+            console.error('[TaskForm] Failed to delete task', err);
+            Alert.alert('Could not delete task', 'Please try again.');
           }
         },
       },

@@ -7,6 +7,9 @@ type LifeProgressRingProps = {
   strokeWidth?: number;
   color?: string;
   trackColor?: string;
+  // At 0% the arc has no length; draw a small dot at the start so the ring
+  // reads as "ready" rather than broken.
+  showEmptyDot?: boolean;
   children?: React.ReactNode;
 };
 
@@ -16,6 +19,7 @@ const LifeProgressRing = ({
   strokeWidth = 6,
   color = '#6366F1',
   trackColor = '#2C2C35',
+  showEmptyDot = false,
   children,
 }: LifeProgressRingProps) => {
   const radius = (size - strokeWidth) / 2;
@@ -50,6 +54,14 @@ const LifeProgressRing = ({
           rotation={-90}
           origin={`${size / 2}, ${size / 2}`}
         />
+        {showEmptyDot && clamped === 0 ? (
+          <Circle
+            cx={size / 2}
+            cy={strokeWidth / 2}
+            r={strokeWidth / 2}
+            fill={color}
+          />
+        ) : null}
       </Svg>
       {children}
     </View>

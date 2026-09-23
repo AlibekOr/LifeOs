@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../shared/utils/supabase.ts';
 import { useAuthStore } from '../services/storage/authStore.ts';
+import { notificationService } from '../services/notification.service.ts';
 
 export function useAuthListener() {
   const setSession = useAuthStore(state => state.setSession);
@@ -22,6 +23,7 @@ export function useAuthListener() {
         // entries are kept (scoped by userId) and sync on that user's return.
         if (event === 'SIGNED_OUT') {
           queryClient.clear();
+          notificationService.cancelAllTaskReminders();
         }
         setSession(session);
       },

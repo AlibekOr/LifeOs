@@ -46,6 +46,9 @@ async function resetPassword(email: string) {
   return { error: null };
 }
 
+// Technical details go to the log only; users get one plain message.
+const GOOGLE_SIGN_IN_ERROR = "Couldn't sign in with Google. Please try again.";
+
 async function signInWithGoogle() {
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -55,14 +58,16 @@ async function signInWithGoogle() {
     }
     const idToken = response.data.idToken;
     if (!idToken) {
-      return { data: null, error: 'Google did not return an ID token.' };
+      console.error('[signInWithGoogle] Google returned no ID token');
+      return { data: null, error: GOOGLE_SIGN_IN_ERROR };
     }
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
       token: idToken,
     });
     if (error) {
-      return { data: null, error: error.message };
+      console.error('[signInWithGoogle] Supabase rejected the token', error);
+      return { data: null, error: GOOGLE_SIGN_IN_ERROR };
     }
     return { data, error: null };
   } catch (err) {
@@ -72,7 +77,7 @@ async function signInWithGoogle() {
     const code = isErrorWithCode(err) ? err.code : 'UNKNOWN';
     const message = err instanceof Error ? err.message : String(err);
     console.error('[signInWithGoogle]', code, message);
-    return { data: null, error: `Google sign-in failed (${code}): ${message}` };
+    return { data: null, error: GOOGLE_SIGN_IN_ERROR };
   }
 }
 

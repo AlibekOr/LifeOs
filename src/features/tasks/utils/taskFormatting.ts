@@ -1,11 +1,3 @@
-import type { TaskPriority } from '../../../types/task.types.ts';
-
-export const priorityStyles: Record<TaskPriority, string> = {
-  High: 'bg-life-danger/15 text-life-danger',
-  Medium: 'bg-life-warning/15 text-life-warning',
-  Low: 'bg-life-muted/15 text-life-muted',
-};
-
 export function formatTime(time: string) {
   return time.slice(0, 5);
 }

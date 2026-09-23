@@ -7,6 +7,7 @@ import LifeInput from '../../../shared/components/Input/LifeInput';
 import LifeText from '../../../shared/components/Typography/LifeText';
 import { RegisterScreenProps } from './type.ts';
 import { authService } from '../../../services/auth.service.ts';
+import KeyboardAwareContent from '../components/KeyboardAwareContent.tsx';
 
 const arrowLeftIcon = require('../../../shared/assets/login/arrow-left.png');
 const eyeIcon = require('../../../shared/assets/login/eye.png');
@@ -71,12 +72,16 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const [isPasswordVisible, setPasswordVisible] = useState(false);
   const passwordStrength = getPasswordStrength(password);
   const handleSignUp = async () => {
-    if (!fullName || !email || !password) {
+    if (!fullName.trim() || !email.trim() || !password) {
       Alert.alert('Please fill in all fields');
       return;
     }
     setLoading(true);
-    const { data, error } = await authService.signUp(email, password, fullName);
+    const { data, error } = await authService.signUp(
+      email.trim(),
+      password,
+      fullName.trim(),
+    );
     setLoading(false);
     if (error) {
       Alert.alert(error);
@@ -105,7 +110,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-1 justify-center px-life-6">
+      <KeyboardAwareContent>
         <View className="gap-life-2">
           <LifeText variant="h1" className="font-bold">
             Create account
@@ -136,7 +141,10 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
               onChangeText={setPassword}
               rightElement={
                 <TouchableOpacity
-                  accessibilityLabel="Show password"
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isPasswordVisible ? 'Hide password' : 'Show password'
+                  }
                   className="h-[18px] w-[18px]"
                   onPress={() => setPasswordVisible(visible => !visible)}
                 >
@@ -190,7 +198,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
             .
           </LifeText>
         </View>
-      </View>
+      </KeyboardAwareContent>
 
       <View className="items-center pb-life-4">
         <LifeText variant="bodySm" className="text-life-muted">

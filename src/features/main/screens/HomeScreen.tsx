@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -11,31 +10,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeProgressRing from '../../../shared/components/ProgressRing/LifeProgressRing.tsx';
+import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
+import LifeIcon from '../../../assets/icons/LifeIcon.tsx';
+import { useNotifications } from '../../notifications/hooks/useNotifications.ts';
 import { useAuthStore } from '../../../services/storage/authStore.ts';
-import { todayDateString } from '../../../services/task.service.ts';
+import { useNow } from '../../../hooks/useNow.ts';
+import { getGreeting } from '../../../utils/greeting.ts';
 import { useToggleTaskCompletion } from '../../tasks/hooks/useTasks.ts';
 import { useTasksWithPending } from '../../tasks/hooks/useTasksWithPending.ts';
 import { useProfile } from '../../profile/hooks/useProfile.ts';
 import TaskListItem from '../../tasks/components/TaskListItem.tsx';
+import { sortTasksCompletedLast } from '../../tasks/utils/taskStatus.ts';
 import SyncStatusBanner from '../components/SyncStatusBanner.tsx';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
 import type { HomeScreenProps } from './type.ts';
 
-const sparkleIcon = require('../../../shared/assets/notifications/sparkles.png');
+function formatToday(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
-const today = new Date().toLocaleDateString('en-US', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-});
-
-function lifeScoreLabel(score: number) {
+function lifeScoreLabel(score: number, total: number, completed: number) {
+  if (total === 0) return "Let's plan your day";
+  if (completed === 0) return "Let's get started";
   if (score >= 80) return 'Life Score Optimal';
   if (score >= 50) return 'Life Score Good';
   return 'Life Score Needs Focus';
 }
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const now = useNow();
+  const { unreadCount } = useNotifications();
   const user = useAuthStore(state => state.user);
   const { data: profile } = useProfile();
   const authFullName = (
@@ -56,9 +64,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const toggleCompletion = useToggleTaskCompletion();
 
   const tasks = useMemo(() => {
-    const todayDate = todayDateString();
+    // Derived from `now` so "today" rolls over when the app is reopened after
+    // midnight; same format as task.due_date.
+    const todayDate = now.toLocaleDateString('en-CA');
     return allTasks?.filter(task => task.due_date === todayDate);
-  }, [allTasks]);
+  }, [allTasks, now]);
+
+  // Same helper as the Tasks screen: unfinished by time first, done last.
+  const sortedTasks = useMemo(
+    () => sortTasksCompletedLast(tasks ?? []),
+    [tasks],
+  );
 
   const totalTasks = tasks?.length ?? 0;
   const completedTasks = tasks?.filter(task => task.is_completed).length ?? 0;
@@ -87,41 +103,68 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
       >
-        <View className="gap-life-5 px-life-5 pb-life-10 pt-life-3">
+        {/* Extra bottom space keeps Plan My Day and the last task clear of the FAB. */}
+        <View className="gap-life-5 px-life-5 pb-[96px] pt-life-3">
           {/* Header */}
           <View className="flex-row items-center justify-between">
             <View>
               <LifeText variant="h2" className="font-bold">
-                Good morning, {firstName} 👋
+                {getGreeting(now)}, {firstName}
               </LifeText>
               <LifeText variant="bodySm" color="text-life-muted">
-                {today}
+                {formatToday(now)}
               </LifeText>
             </View>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Open profile"
-              onPress={() => navigation.navigate('Profile')}
-              className="h-12 w-12 items-center justify-center rounded-full border border-life-border bg-life-surface"
-            >
-              <LifeText variant="body" className="font-semibold">
-                {firstName.charAt(0).toUpperCase()}
-              </LifeText>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-life-3">
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  unreadCount > 0
+                    ? `Notifications, ${unreadCount} unread`
+                    : 'Notifications'
+                }
+                onPress={() => navigation.navigate('Notifications')}
+                className="h-12 w-12 items-center justify-center rounded-full border border-life-border bg-life-surface"
+              >
+                <LifeIcon name="bell" size={22} color="#FFFFFF" />
+                {unreadCount > 0 ? (
+                  <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-life-danger px-life-1">
+                    <LifeText variant="caption" className="font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </LifeText>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Open profile"
+                onPress={() => navigation.navigate('Profile')}
+                className="h-12 w-12 items-center justify-center rounded-full border border-life-border bg-life-surface"
+              >
+                <LifeText variant="body" className="font-semibold">
+                  {firstName.charAt(0).toUpperCase()}
+                </LifeText>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <SyncStatusBanner />
 
           {/* Life Score */}
           <View className="flex-row items-center gap-life-4 rounded-life-2xl border border-life-border bg-life-surface p-life-5">
-            <LifeProgressRing progress={lifeScore} size={72} strokeWidth={6}>
+            <LifeProgressRing
+              progress={lifeScore}
+              size={72}
+              strokeWidth={6}
+              showEmptyDot
+            >
               <LifeText variant="h3" className="font-bold">
                 {lifeScore}
               </LifeText>
             </LifeProgressRing>
             <View className="flex-1 gap-life-1">
               <LifeText variant="body" className="font-semibold">
-                {lifeScoreLabel(lifeScore)}
+                {lifeScoreLabel(lifeScore, totalTasks, completedTasks)}
               </LifeText>
               <LifeText variant="bodySm" color="text-life-muted">
                 {completedTasks} of {totalTasks} tasks completed today
@@ -130,9 +173,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
 
           {/* AI Advisor */}
-          <View className="gap-life-2 rounded-life-2xl border border-life-border bg-life-surface p-life-5">
+          <View className="gap-life-2 rounded-life-2xl border border-life-primary/30 bg-life-surface p-life-5">
             <View className="flex-row items-center gap-life-2">
-              <Image source={sparkleIcon} className="h-4 w-4" />
+              <LifeIcon name="sparkles" size={16} color="#818CF8" />
               <LifeText
                 variant="bodySm"
                 className="font-semibold text-life-accent"
@@ -151,21 +194,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
           {/* Today's Schedule */}
           <View className="gap-life-3">
-            <View className="flex-row items-center justify-between">
-              <LifeText variant="h3" className="font-bold">
-                Today's Schedule
-              </LifeText>
-              <LifeText variant="bodySm" color="text-life-muted">
-                {completionPercent}% done
-              </LifeText>
-            </View>
-
-            <View className="h-1.5 w-full overflow-hidden rounded-full bg-life-border">
-              <View
-                className="h-full rounded-full bg-life-primary"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </View>
+            <LifeText variant="h3" className="font-bold">
+              Today's Schedule
+            </LifeText>
 
             {isLoading ? (
               <View className="items-center py-life-6">
@@ -198,10 +229,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               </View>
             ) : (
               <View className="gap-life-3">
-                {tasks?.map(task => (
+                {sortedTasks.map(task => (
                   <TaskListItem
                     key={task.id}
                     task={task}
+                    now={now}
                     onToggleComplete={handleToggle}
                   />
                 ))}
@@ -215,13 +247,22 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             className="flex-row items-center justify-center gap-life-2 rounded-life-lg bg-life-primary py-life-4"
             onPress={() => {}}
           >
-            <Image source={sparkleIcon} className="h-4 w-4" />
+            <LifeIcon name="sparkles" size={18} />
             <LifeText variant="body" className="font-semibold">
               Plan My Day
             </LifeText>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <LifeFab
+        accessibilityLabel="Add task"
+        // initial: false keeps TasksList underneath; otherwise the form would become
+        // the Tasks stack's only screen and the Tasks tab would open on it.
+        onPress={() =>
+          navigation.navigate('Tasks', { screen: 'TaskForm', initial: false })
+        }
+      />
     </SafeAreaView>
   );
 };

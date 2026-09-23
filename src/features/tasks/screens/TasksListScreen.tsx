@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
+import LifeButton from '../../../shared/components/Button/LifeButton.tsx';
 import TaskListItem from '../components/TaskListItem.tsx';
 import TaskSectionHeader from '../components/TaskSectionHeader.tsx';
 import PriorityFilterRow from '../components/PriorityFilterRow.tsx';
@@ -18,6 +19,8 @@ import { useToggleTaskCompletion } from '../hooks/useTasks.ts';
 import { useTasksWithPending } from '../hooks/useTasksWithPending.ts';
 import { usePendingSyncStore } from '../../../store/pendingSync.store.ts';
 import { groupTasksByDate } from '../utils/groupTasksByDate.ts';
+import { sortTasksCompletedLast } from '../utils/taskStatus.ts';
+import { useNow } from '../../../hooks/useNow.ts';
 import type { TaskFilterPriority } from '../../../types/task.types.ts';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
 import type { TasksListScreenProps } from './type.ts';
@@ -27,6 +30,7 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
     useState<TaskFilterPriority>('All');
   const { tasks, isLoading, isError, error, refetch, isRefetching } =
     useTasksWithPending();
+  const now = useNow();
   const toggleCompletion = useToggleTaskCompletion();
   const retryEntry = usePendingSyncStore(state => state.retryEntry);
   const discardEntry = usePendingSyncStore(state => state.discardEntry);
@@ -39,8 +43,9 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
     [tasks, priorityFilter],
   );
 
+  // Sorted before grouping so completed tasks sink to the bottom of each day.
   const sections = useMemo(
-    () => groupTasksByDate(filteredTasks),
+    () => groupTasksByDate(sortTasksCompletedLast(filteredTasks)),
     [filteredTasks],
   );
 
@@ -129,6 +134,15 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
                 ? 'No tasks yet. Tap + to add one.'
                 : `No ${priorityFilter} priority tasks.`}
             </LifeText>
+            {priorityFilter !== 'All' ? (
+              <View className="w-full pt-life-4">
+                <LifeButton
+                  title="Show all"
+                  onPress={() => setPriorityFilter('All')}
+                  fullWidth
+                />
+              </View>
+            ) : null}
           </View>
         </View>
       ) : (
@@ -139,13 +153,15 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
           renderSectionHeader={({ section }) => (
             <TaskSectionHeader
               label={section.label}
-              count={section.data.length}
+              completed={section.data.filter(task => task.is_completed).length}
+              total={section.data.length}
             />
           )}
           renderItem={({ item }) => (
             <View className="pb-life-3">
               <TaskListItem
                 task={item}
+                now={now}
                 onToggleComplete={handleToggle}
                 onPress={handlePress}
               />
