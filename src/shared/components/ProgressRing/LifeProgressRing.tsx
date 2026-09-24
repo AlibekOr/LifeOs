@@ -32,37 +32,39 @@ const LifeProgressRing = ({
       style={{ width: size, height: size }}
       className="items-center justify-center"
     >
-      <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          fill="none"
-          rotation={-90}
-          origin={`${size / 2}, ${size / 2}`}
-        />
-        {showEmptyDot && clamped === 0 ? (
+      <View className="absolute">
+        <Svg width={size} height={size}>
           <Circle
             cx={size / 2}
-            cy={strokeWidth / 2}
-            r={strokeWidth / 2}
-            fill={color}
+            cy={size / 2}
+            r={radius}
+            stroke={trackColor}
+            strokeWidth={strokeWidth}
+            fill="none"
           />
-        ) : null}
-      </Svg>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={strokeDashoffset}
+            fill="none"
+            rotation={-90}
+            origin={`${size / 2}, ${size / 2}`}
+          />
+          {showEmptyDot && clamped === 0 ? (
+            <Circle
+              cx={size / 2}
+              cy={strokeWidth / 2}
+              r={strokeWidth / 2}
+              fill={color}
+            />
+          ) : null}
+        </Svg>
+      </View>
       {children}
     </View>
   );

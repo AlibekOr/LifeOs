@@ -1,4 +1,8 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  type BottomTabNavigationOptions,
+} from '@react-navigation/bottom-tabs';
+import type { RouteProp } from '@react-navigation/native';
 import type { MainTabParamList } from './types.ts';
 import HomeScreen from '../../features/main/screens/HomeScreen.tsx';
 import ComingSoonView from '../../features/main/components/ComingSoonView.tsx';
@@ -25,29 +29,35 @@ const tabIcons: Record<keyof MainTabParamList, LifeIconName> = {
   Notifications: 'bell',
 };
 
+// Defined at module level so the tabBarIcon component is not recreated on every
+// MainNavigator render, which would remount the icons.
+const screenOptions = ({
+  route,
+}: {
+  route: RouteProp<MainTabParamList>;
+}): BottomTabNavigationOptions => ({
+  headerShown: false,
+  tabBarActiveTintColor: '#6366F1',
+  tabBarInactiveTintColor: '#9494A1',
+  tabBarStyle: {
+    backgroundColor: '#09090C',
+    borderTopColor: '#2C2C35',
+  },
+  tabBarLabelStyle: { fontFamily: 'Inter', fontSize: 12 },
+  // `color` is tabBarActiveTintColor (life.primary) or the inactive one
+  // (life.muted), so icon and label always match.
+  tabBarIcon: ({ color, size }) => (
+    <LifeIcon name={tabIcons[route.name]} color={color} size={size} />
+  ),
+});
+
 const MainNavigator = () => {
   usePendingSync();
   useReminderSync();
   useNotificationTaps();
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: '#6366F1',
-        tabBarInactiveTintColor: '#9494A1',
-        tabBarStyle: {
-          backgroundColor: '#09090C',
-          borderTopColor: '#2C2C35',
-        },
-        tabBarLabelStyle: { fontFamily: 'Inter', fontSize: 12 },
-        // `color` is tabBarActiveTintColor (life.primary) or the inactive one
-        // (life.muted), so icon and label always match.
-        tabBarIcon: ({ color, size }) => (
-          <LifeIcon name={tabIcons[route.name]} color={color} size={size} />
-        ),
-      })}
-    >
+    <Tab.Navigator screenOptions={screenOptions}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Tasks" component={TasksNavigator} />
       <Tab.Screen name="Goals" component={GoalsScreen} />
