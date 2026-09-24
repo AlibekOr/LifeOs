@@ -11,6 +11,8 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		B1A291DB3065BD29007CE066 /* lifeos_celebration.caf in Resources */ = {isa = PBXBuildFile; fileRef = B1A291DA3065BD29007CE066 /* lifeos_celebration.caf */; };
+		B1A291DD3065BD3F007CE066 /* lifeos_reminder.caf in Resources */ = {isa = PBXBuildFile; fileRef = B1A291DC3065BD3F007CE066 /* lifeos_reminder.caf */; };
 		B6BE9B4E18EDB2389A9D9659 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -24,6 +26,8 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-LifeOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LifeOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = LifeOS/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = LifeOS/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		B1A291DA3065BD29007CE066 /* lifeos_celebration.caf */ = {isa = PBXFileReference; lastKnownFileType = file; name = lifeos_celebration.caf; path = LifeOS/lifeos_celebration.caf; sourceTree = "<group>"; };
+		B1A291DC3065BD3F007CE066 /* lifeos_reminder.caf */ = {isa = PBXFileReference; lastKnownFileType = file; name = lifeos_reminder.caf; path = LifeOS/lifeos_reminder.caf; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -42,7 +46,9 @@
 		13B07FAE1A68108700A75B9A /* LifeOS */ = {
 			isa = PBXGroup;
 			children = (
+				B1A291DA3065BD29007CE066 /* lifeos_celebration.caf */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
+				B1A291DC3065BD3F007CE066 /* lifeos_reminder.caf */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -160,7 +166,9 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				B1A291DD3065BD3F007CE066 /* lifeos_reminder.caf in Resources */,
 				B6BE9B4E18EDB2389A9D9659 /* PrivacyInfo.xcprivacy in Resources */,
+				B1A291DB3065BD29007CE066 /* lifeos_celebration.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,9 +199,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LifeOS/Pods-LifeOS-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LifeOS/Pods-LifeOS-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -230,9 +242,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LifeOS/Pods-LifeOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LifeOS/Pods-LifeOS-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
