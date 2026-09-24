@@ -68,6 +68,9 @@ async function createTask(input: CreateTaskInput, id?: string): Promise<Task> {
       due_date: input.due_date ?? todayDateString(),
       attachment_path: input.attachment_path ?? null,
       is_completed: input.is_completed ?? false,
+      // An offline task can be started before its create is synced; that Start
+      // is merged into the queued create and would be lost without this.
+      started_at: input.started_at ?? null,
     })
     .select()
     .single();
