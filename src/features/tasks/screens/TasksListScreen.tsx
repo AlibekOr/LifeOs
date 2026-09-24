@@ -20,7 +20,7 @@ import { useTasksWithPending } from '../hooks/useTasksWithPending.ts';
 import { usePendingSyncStore } from '../../../store/pendingSync.store.ts';
 import { groupTasksByDate } from '../utils/groupTasksByDate.ts';
 import { sortTasksCompletedLast } from '../utils/taskStatus.ts';
-import { useNow } from '../../../hooks/useNow.ts';
+import { MINUTE_MS, useNow } from '../../../hooks/useNow.ts';
 import type { TaskFilterPriority } from '../../../types/task.types.ts';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
 import type { TasksListScreenProps } from './type.ts';
@@ -30,7 +30,8 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
     useState<TaskFilterPriority>('All');
   const { tasks, isLoading, isError, error, refetch, isRefetching } =
     useTasksWithPending();
-  const now = useNow();
+  // Statuses (NOW, Overdue, Missed) change on minute boundaries.
+  const now = useNow(MINUTE_MS);
   const toggleCompletion = useToggleTaskCompletion();
   const retryEntry = usePendingSyncStore(state => state.retryEntry);
   const discardEntry = usePendingSyncStore(state => state.discardEntry);

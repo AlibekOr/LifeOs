@@ -14,16 +14,25 @@ import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
 import LifeIcon from '../../../assets/icons/LifeIcon.tsx';
 import { useNotifications } from '../../notifications/hooks/useNotifications.ts';
 import { useAuthStore } from '../../../services/storage/authStore.ts';
-import { useNow } from '../../../hooks/useNow.ts';
+import { MINUTE_MS, useNow } from '../../../hooks/useNow.ts';
+import { capitalizeFirst } from '../../../utils/capitalize.ts';
 import { getGreeting } from '../../../utils/greeting.ts';
 import { useToggleTaskCompletion } from '../../tasks/hooks/useTasks.ts';
 import { useTasksWithPending } from '../../tasks/hooks/useTasksWithPending.ts';
 import { useProfile } from '../../profile/hooks/useProfile.ts';
 import TaskListItem from '../../tasks/components/TaskListItem.tsx';
-import { sortTasksCompletedLast } from '../../tasks/utils/taskStatus.ts';
+import {
+  isTaskActive,
+  sortTasksCompletedLast,
+} from '../../tasks/utils/taskStatus.ts';
 import SyncStatusBanner from '../components/SyncStatusBanner.tsx';
+import NowCard from '../components/NowCard.tsx';
+import { useNowCardActions } from '../hooks/useNowCardActions.ts';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
 import type { HomeScreenProps } from './type.ts';
+
+// Hidden for now; the AI Advisor card will be reworked or removed later.
+const SHOW_AI_ADVISOR = false;
 
 function formatToday(date: Date) {
   return date.toLocaleDateString('en-US', {
@@ -36,13 +45,14 @@ function formatToday(date: Date) {
 function lifeScoreLabel(score: number, total: number, completed: number) {
   if (total === 0) return "Let's plan your day";
   if (completed === 0) return "Let's get started";
-  if (score >= 80) return 'Life Score Optimal';
-  if (score >= 50) return 'Life Score Good';
-  return 'Life Score Needs Focus';
+  if (score >= 80) return 'Life Score · Optimal';
+  if (score >= 50) return 'Life Score · Good';
+  return 'Life Score · Needs Focus';
 }
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
-  const now = useNow();
+  // Task statuses and the Now card change on minute boundaries.
+  const now = useNow(MINUTE_MS);
   const { unreadCount } = useNotifications();
   const user = useAuthStore(state => state.user);
   const { data: profile } = useProfile();
@@ -50,8 +60,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     user?.user_metadata?.full_name as string | undefined
   )?.trim();
   const fullName = profile?.full_name?.trim() || authFullName;
-  const firstName =
-    fullName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there';
+  const rawFirstName = fullName?.split(' ')[0] || user?.email?.split('@')[0];
+  // Names are shown with a capital first letter, however they were typed; the
+  // "there" fallback stays lower case to read "Good evening, there".
+  const firstName = rawFirstName ? capitalizeFirst(rawFirstName) : 'there';
 
   const {
     tasks: allTasks,
@@ -62,6 +74,15 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     isRefetching,
   } = useTasksWithPending();
   const toggleCompletion = useToggleTaskCompletion();
+  const nowCardActions = useNowCardActions();
+
+  const handleEditTask = (task: DisplayTask) =>
+    // initial: false keeps TasksList underneath, as for the Add task button.
+    navigation.navigate('Tasks', {
+      screen: 'TaskForm',
+      params: { taskId: task.id },
+      initial: false,
+    });
 
   const tasks = useMemo(() => {
     // Derived from `now` so "today" rolls over when the app is reopened after
@@ -70,10 +91,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return allTasks?.filter(task => task.due_date === todayDate);
   }, [allTasks, now]);
 
-  // Same helper as the Tasks screen: unfinished by time first, done last.
-  const sortedTasks = useMemo(
-    () => sortTasksCompletedLast(tasks ?? []),
-    [tasks],
+  // Home only lists what is still actual today: not finished, not missed and
+  // not timed out. The Tasks screen keeps the full history.
+  const activeTasks = useMemo(
+    () =>
+      sortTasksCompletedLast(
+        (tasks ?? []).filter(task => isTaskActive(task, now)),
+      ),
+    [tasks, now],
   );
 
   const totalTasks = tasks?.length ?? 0;
@@ -150,6 +175,16 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
           <SyncStatusBanner />
 
+          <NowCard
+            tasks={allTasks ?? []}
+            now={now}
+            pendingAction={nowCardActions.pendingAction}
+            onEditTask={handleEditTask}
+            onStart={nowCardActions.start}
+            onComplete={nowCardActions.complete}
+            onExtend={nowCardActions.extend}
+          />
+
           {/* Life Score */}
           <View className="flex-row items-center gap-life-4 rounded-life-2xl border border-life-border bg-life-surface p-life-5">
             <LifeProgressRing
@@ -173,24 +208,26 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
 
           {/* AI Advisor */}
-          <View className="gap-life-2 rounded-life-2xl border border-life-primary/30 bg-life-surface p-life-5">
-            <View className="flex-row items-center gap-life-2">
-              <LifeIcon name="sparkles" size={16} color="#818CF8" />
-              <LifeText
-                variant="bodySm"
-                className="font-semibold text-life-accent"
-              >
-                AI ADVISOR
+          {SHOW_AI_ADVISOR ? (
+            <View className="gap-life-2 rounded-life-2xl border border-life-primary/30 bg-life-surface p-life-5">
+              <View className="flex-row items-center gap-life-2">
+                <LifeIcon name="sparkles" size={16} color="#818CF8" />
+                <LifeText
+                  variant="bodySm"
+                  className="font-semibold text-life-accent"
+                >
+                  AI ADVISOR
+                </LifeText>
+              </View>
+              <LifeText variant="body" color="text-life-muted">
+                {totalTasks === 0
+                  ? 'You have no tasks scheduled yet. Add your first task to start planning your day.'
+                  : `You have ${totalTasks} task${
+                      totalTasks === 1 ? '' : 's'
+                    } today. Focus on the highest priority ones first.`}
               </LifeText>
             </View>
-            <LifeText variant="body" color="text-life-muted">
-              {totalTasks === 0
-                ? 'You have no tasks scheduled yet. Add your first task to start planning your day.'
-                : `You have ${totalTasks} task${
-                    totalTasks === 1 ? '' : 's'
-                  } today. Focus on the highest priority ones first.`}
-            </LifeText>
-          </View>
+          ) : null}
 
           {/* Today's Schedule */}
           <View className="gap-life-3">
@@ -221,15 +258,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   </LifeText>
                 </TouchableOpacity>
               </View>
-            ) : totalTasks === 0 ? (
+            ) : activeTasks.length === 0 ? (
               <View className="items-center rounded-life-lg border border-life-border bg-life-surface p-life-6">
                 <LifeText variant="bodySm" color="text-life-muted">
-                  No tasks scheduled for today.
+                  {totalTasks === 0
+                    ? 'No tasks scheduled for today.'
+                    : 'Nothing else scheduled for today.'}
                 </LifeText>
               </View>
             ) : (
               <View className="gap-life-3">
-                {sortedTasks.map(task => (
+                {activeTasks.map(task => (
                   <TaskListItem
                     key={task.id}
                     task={task}

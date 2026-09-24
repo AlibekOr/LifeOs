@@ -20,6 +20,7 @@ export function buildLocalTask(entry: PendingTaskCreate): Task {
     is_completed: payload.is_completed ?? false,
     due_date: payload.due_date ?? todayDateString(),
     attachment_path: payload.attachment_path ?? null,
+    started_at: payload.started_at ?? null,
     created_at: entry.queuedAt,
     updated_at: entry.queuedAt,
   };

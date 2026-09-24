@@ -27,15 +27,15 @@ export function groupTasksByDate<T extends Task>(tasks: T[]): TaskSection<T>[] {
   const tomorrow = tomorrowDateString();
 
   const overdue: T[] = [];
+  const archived: T[] = [];
   const todayTasks: T[] = [];
   const tomorrowTasks: T[] = [];
   const futureByDate = new Map<string, T[]>();
 
   tasks.forEach(task => {
     if (task.due_date < today) {
-      if (!task.is_completed) {
-        overdue.push(task);
-      }
+      // Past unfinished tasks need attention; finished ones are kept in the archive.
+      (task.is_completed ? archived : overdue).push(task);
       return;
     }
     if (task.due_date === today) {
@@ -68,6 +68,15 @@ export function groupTasksByDate<T extends Task>(tasks: T[]): TaskSection<T>[] {
       data: futureByDate.get(dueDate) ?? [],
     });
   });
+  if (archived.length > 0) {
+    // Most recent first, so yesterday's work is at the top of the archive.
+    archived.sort((a, b) =>
+      a.due_date === b.due_date
+        ? b.scheduled_time.localeCompare(a.scheduled_time)
+        : b.due_date.localeCompare(a.due_date),
+    );
+    sections.push({ key: 'archive', label: 'Archive', data: archived });
+  }
 
   return sections;
 }

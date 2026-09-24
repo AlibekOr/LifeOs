@@ -13,25 +13,42 @@ import {
 } from '../utils/permissions.ts';
 import { useReminderSettingsStore } from '../store/reminderSettings.store.ts';
 import {
-  getReminderTime,
-  selectRemindersToSchedule,
-} from '../features/tasks/utils/reminderTime.ts';
-import { formatTime } from '../features/tasks/utils/taskFormatting.ts';
-import { getTaskStart } from '../features/tasks/utils/taskStatus.ts';
-import type { Task } from '../types/task.types.ts';
+  alertIds,
+  planTaskAlerts,
+  selectAlertsToSchedule,
+  type AlertTask,
+  type PlannedAlert,
+} from '../features/tasks/utils/taskAlerts.ts';
 
-const REMINDER_CHANNEL_ID = 'task-reminders';
-const MS_PER_MINUTE = 60 * 1000;
+// Android fixes a channel's sound when the channel is created, so a different
+// sound needs a new channel id (and the old channel is deleted).
+const REMINDER_CHANNEL_ID = 'task-reminders-v3';
+// Older channels cannot be changed: v1 had no sound, v2 used the system sound.
+const LEGACY_REMINDER_CHANNEL_IDS = ['task-reminders', 'task-reminders-v2'];
 
-type ReminderTask = Pick<
-  Task,
-  'id' | 'title' | 'is_completed' | 'due_date' | 'scheduled_time'
->;
+// The bundled alert sound ("New Notification 09" by Universfield, Pixabay
+// Content License, no attribution required). Android takes the res/raw file name
+// without its extension; iOS needs the .caf in the Xcode target's bundle
+// resources, and plays the default sound if it is missing.
+const ANDROID_REMINDER_SOUND = 'lifeos_reminder';
+const IOS_REMINDER_SOUND = 'lifeos_reminder.caf';
+// The sound played when a task is completed and the gift opens: "Short Success
+// Sound Glockenspiel Treasure" by freesound_community, Pixabay Content License.
+const CELEBRATION_CHANNEL_ID = 'celebration-v1';
+const CELEBRATION_NOTIFICATION_ID = 'celebration';
+const ANDROID_CELEBRATION_SOUND = 'lifeos_celebration';
+const IOS_CELEBRATION_SOUND = 'lifeos_celebration.caf';
+// Android stops a notification's sound when the notification goes away, so it
+// must outlast the 2.5 s clip.
+const CELEBRATION_VISIBLE_MS = 3500;
+// TODO: a "Notification sound on/off" setting; the OS already silences alerts
+// in silent and Do Not Disturb modes, which is not overridden.
 
 // Editing or unchecking tasks reschedules reminders; without these the alerts
 // would reappear on every such action.
 let disabledAlertShown = false;
 let exactAlarmPromptShown = false;
+let legacyChannelsRemoved = false;
 
 async function ensureChannel(): Promise<void> {
   if (Platform.OS !== 'android') {
@@ -41,7 +58,15 @@ async function ensureChannel(): Promise<void> {
     id: REMINDER_CHANNEL_ID,
     name: 'Task Reminders',
     importance: AndroidImportance.HIGH,
+    sound: ANDROID_REMINDER_SOUND,
+    vibration: true,
   });
+  if (!legacyChannelsRemoved) {
+    legacyChannelsRemoved = true;
+    await Promise.all(
+      LEGACY_REMINDER_CHANNEL_IDS.map(id => notifee.deleteChannel(id)),
+    );
+  }
 }
 
 function showNotificationsDisabledAlert(): void {
@@ -95,60 +120,70 @@ async function canUseExactAlarms(promptIfMissing: boolean): Promise<boolean> {
   return false;
 }
 
-function reminderBody(task: ReminderTask, at: Date): string {
-  const minutesAhead = Math.round(
-    (getTaskStart(task).getTime() - at.getTime()) / MS_PER_MINUTE,
-  );
-  return minutesAhead > 0
-    ? `Starts at ${formatTime(task.scheduled_time)} · in ${minutesAhead} min`
-    : 'Starting now';
-}
-
-async function createReminder(
-  task: ReminderTask,
-  at: Date,
+async function createAlert(
+  alert: PlannedAlert,
   useExactAlarm: boolean,
 ): Promise<void> {
   const trigger: TimestampTrigger = {
     type: TriggerType.TIMESTAMP,
-    timestamp: at.getTime(),
+    timestamp: alert.at.getTime(),
     ...(useExactAlarm
       ? { alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE } }
       : {}),
   };
-  // Same id as the task, so rescheduling replaces the previous reminder.
+  // A deterministic id per task and kind, so rescheduling replaces the alert.
   await notifee.createTriggerNotification(
     {
-      id: task.id,
-      title: task.title,
-      body: reminderBody(task, at),
-      data: { taskId: task.id },
+      id: alert.id,
+      title: alert.title,
+      body: alert.body,
+      // `kind` tells a tap where to go: start and end alerts open Home.
+      data: { taskId: alert.taskId, kind: alert.kind },
       android: {
         channelId: REMINDER_CHANNEL_ID,
         pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: IOS_REMINDER_SOUND,
+        // Banner and sound also while the app is open.
+        foregroundPresentationOptions: {
+          banner: true,
+          list: true,
+          sound: true,
+          badge: true,
+        },
       },
     },
     trigger,
   );
 }
 
+// Removes every alert of one task (lead, start and end).
 async function cancelTaskReminder(taskId: string): Promise<void> {
   try {
-    await notifee.cancelTriggerNotification(taskId);
+    await notifee.cancelTriggerNotifications(alertIds(taskId));
   } catch (error) {
     console.error(error);
   }
 }
 
-// Schedules (or clears) the reminder for one task after the user created,
-// edited, or completed it.
-async function scheduleTaskReminder(task: ReminderTask): Promise<void> {
+// Brings one task's scheduled alerts in line with its current state after the
+// user created, edited, started or completed it: drops the ones no longer
+// wanted and (re)creates the rest.
+async function scheduleTaskReminder(task: AlertTask): Promise<void> {
   const { leadMinutes } = useReminderSettingsStore.getState();
-  const at = task.is_completed
-    ? null
-    : getReminderTime(getTaskStart(task), leadMinutes, new Date());
-  if (!at) {
-    await cancelTaskReminder(task.id);
+  const planned = planTaskAlerts(task, leadMinutes, new Date());
+
+  const wantedIds = new Set(planned.map(alert => alert.id));
+  const staleIds = alertIds(task.id).filter(id => !wantedIds.has(id));
+  if (staleIds.length > 0) {
+    try {
+      await notifee.cancelTriggerNotifications(staleIds);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  if (planned.length === 0) {
     return;
   }
 
@@ -163,23 +198,25 @@ async function scheduleTaskReminder(task: ReminderTask): Promise<void> {
 
   try {
     await ensureChannel();
-    await createReminder(task, at, await canUseExactAlarms(true));
+    const useExactAlarm = await canUseExactAlarms(true);
+    for (const alert of planned) {
+      await createAlert(alert, useExactAlarm);
+    }
   } catch (error) {
     console.error(error);
   }
 }
 
-// Brings scheduled reminders in line with the tasks we know about: adds ones
+// Brings scheduled alerts in line with the tasks we know about: adds ones
 // missing (tasks from another device, a changed lead time), removes ones whose
-// task was finished or deleted. Never prompts; it runs on app start.
-async function syncTaskReminders(
-  tasks: readonly ReminderTask[],
-): Promise<void> {
+// task was finished or deleted, and any left over from the old id scheme. Never
+// prompts; it runs on app start.
+async function syncTaskReminders(tasks: readonly AlertTask[]): Promise<void> {
   const { leadMinutes } = useReminderSettingsStore.getState();
-  const planned = selectRemindersToSchedule(tasks, leadMinutes, new Date());
+  const planned = selectAlertsToSchedule(tasks, leadMinutes, new Date());
 
   try {
-    const wantedIds = new Set(planned.map(item => item.task.id));
+    const wantedIds = new Set(planned.map(alert => alert.id));
     const scheduledIds = await notifee.getTriggerNotificationIds();
     const staleIds = scheduledIds.filter(id => !wantedIds.has(id));
     if (staleIds.length > 0) {
@@ -191,9 +228,53 @@ async function syncTaskReminders(
 
     await ensureChannel();
     const useExactAlarm = await canUseExactAlarms(false);
-    for (const { task, at } of planned) {
-      await createReminder(task, at, useExactAlarm);
+    for (const alert of planned) {
+      await createAlert(alert, useExactAlarm);
     }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Plays the "congratulations" sound as the gift opens. It goes through a local
+// notification so no audio library is needed: on iOS it is sound only while the
+// app is open (no banner); Android must post a notification for the sound, so it
+// is low-key (no pop-up) and removes itself. Never prompts for permission, and
+// never breaks the celebration: without permission it is simply silent.
+async function playCelebrationSound(): Promise<void> {
+  try {
+    if (!(await hasNotificationPermission())) {
+      return;
+    }
+    if (Platform.OS === 'android') {
+      await notifee.createChannel({
+        id: CELEBRATION_CHANNEL_ID,
+        name: 'Celebration',
+        importance: AndroidImportance.DEFAULT,
+        sound: ANDROID_CELEBRATION_SOUND,
+        vibration: false,
+      });
+    }
+    await notifee.displayNotification({
+      id: CELEBRATION_NOTIFICATION_ID,
+      title: 'Task complete!',
+      android: {
+        channelId: CELEBRATION_CHANNEL_ID,
+        timeoutAfter: CELEBRATION_VISIBLE_MS,
+      },
+      ios: {
+        sound: IOS_CELEBRATION_SOUND,
+        foregroundPresentationOptions: {
+          // notifee defaults the deprecated `alert` to true and, when banner and
+          // list are both off, falls back to it, so it must be turned off too.
+          alert: false,
+          banner: false,
+          list: false,
+          sound: true,
+          badge: false,
+        },
+      },
+    });
   } catch (error) {
     console.error(error);
   }
@@ -214,4 +295,5 @@ export const notificationService = {
   cancelAllTaskReminders,
   syncTaskReminders,
   requestReminderPermission,
+  playCelebrationSound,
 };

@@ -5,7 +5,7 @@ import {
   formatDuration,
   formatTime,
 } from '../../tasks/utils/taskFormatting.ts';
-import { getTaskStart, isTaskOverdue } from '../../tasks/utils/taskStatus.ts';
+import { getTaskStart, getTaskTimeInfo } from '../../tasks/utils/taskStatus.ts';
 
 export type NotificationGroup = 'attention' | 'upcoming' | 'insights';
 
@@ -37,6 +37,7 @@ type NotifiableTask = Pick<
   | 'scheduled_time'
   | 'duration_minutes'
   | 'is_completed'
+  | 'started_at'
 >;
 
 export type BuildNotificationsInput = {
@@ -90,10 +91,13 @@ function overdueNotifications(
 ): AppNotification[] {
   const oldest = now.getTime() - OVERDUE_LOOKBACK_DAYS * MS_PER_DAY;
   const overdue = tasks
-    .filter(
-      task =>
-        isTaskOverdue(task, now) && getTaskStart(task).getTime() >= oldest,
-    )
+    .filter(task => {
+      const { status } = getTaskTimeInfo(task, now);
+      return (
+        (status === 'overdue' || status === 'missed') &&
+        getTaskStart(task).getTime() >= oldest
+      );
+    })
     // Most recently missed first.
     .sort((a, b) => getTaskStart(b).getTime() - getTaskStart(a).getTime());
 

@@ -32,7 +32,9 @@ export type LifeIconName =
   | 'refresh-cw'
   | 'check-check'
   | 'chevron-left'
-  | 'trending-up';
+  | 'trending-up'
+  | 'pencil'
+  | 'x';
 
 type IconShape =
   | { type: 'path'; d: string }
@@ -104,6 +106,13 @@ const ICONS: Record<LifeIconName, IconShape[]> = {
   'check-check': [path('M18 6 7 17l-5-5'), path('m22 10-7.5 7.5L13 16')],
   'chevron-left': [path('m15 18-6-6 6-6')],
   'trending-up': [path('M16 7h6v6'), path('m22 7-8.5 8.5-5-5L2 17')],
+  pencil: [
+    path(
+      'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
+    ),
+    path('m15 5 4 4'),
+  ],
+  x: [path('M18 6 6 18'), path('m6 6 12 12')],
 };
 
 type LifeIconProps = {

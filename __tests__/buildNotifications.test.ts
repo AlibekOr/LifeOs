@@ -20,6 +20,7 @@ const task = (
   scheduled_time: time,
   duration_minutes: 30,
   is_completed: false,
+  started_at: null,
   ...overrides,
 });
 
@@ -45,6 +46,24 @@ describe('buildNotifications: overdue', () => {
     expect(
       ids({ tasks: [task('a', '09:00:00', { is_completed: true })] }),
     ).toEqual([]);
+  });
+
+  it('does not flag a task still inside the 5 minute start window', () => {
+    expect(ids({ tasks: [task('a', '11:56:00')] })).not.toContain('overdue:a');
+  });
+
+  it('does not flag a started task that is still counting down', () => {
+    const startedAt = new Date(2026, 8, 23, 11, 50, 0).toISOString();
+    expect(
+      ids({ tasks: [task('a', '09:00:00', { started_at: startedAt })] }),
+    ).not.toContain('overdue:a');
+  });
+
+  it('flags a started task whose time ran out', () => {
+    const startedAt = new Date(2026, 8, 23, 11, 0, 0).toISOString();
+    expect(
+      ids({ tasks: [task('a', '09:00:00', { started_at: startedAt })] }),
+    ).toEqual(['overdue:a']);
   });
 
   it('ignores tasks older than the lookback window', () => {
