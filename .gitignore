@@ -76,3 +76,6 @@ yarn-error.log
 
 # Local environment config (Supabase / Google client IDs)
 .env.local
+
+# graphify knowledge graph output
+graphify-out/
