@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   TouchableOpacity,
@@ -313,7 +314,7 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-life-bg" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-life-bg" edges={['top', 'bottom']}>
       <View className="h-12 flex-row items-center justify-between px-life-4">
         <TouchableOpacity
           accessibilityLabel="Cancel"
@@ -329,152 +330,175 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
         <View className="w-14" />
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
         className="flex-1"
-        contentContainerClassName="gap-life-5 px-life-5 pb-life-10 pt-life-3"
-        showsVerticalScrollIndicator={false}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <LifeInput
-          label="Title"
-          placeholder="What do you need to do?"
-          value={title}
-          onChangeText={setTitle}
-        />
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="gap-life-5 px-life-5 pb-life-10 pt-life-3"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <LifeInput
+            label="Title"
+            placeholder="What do you need to do?"
+            value={title}
+            onChangeText={setTitle}
+          />
 
-        <View className="gap-life-2">
-          <LifeText variant="bodySm" className="font-medium text-life-muted">
-            Due Date
-          </LifeText>
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => setShowDatePicker(true)}
-            className="rounded-life-md border border-life-border bg-life-surface p-life-4"
-          >
-            <LifeText variant="body">{formatDateLabel(dueDate)}</LifeText>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <View className="overflow-hidden rounded-life-md border border-life-border bg-life-surface p-life-3">
-              <DateTimePicker
-                value={dueDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                themeVariant="dark"
-                accentColor="#6366F1"
-                onChange={handleDateChange}
-              />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={() => setShowDatePicker(false)}
-                  className="items-end pt-life-2"
-                >
-                  <LifeText
-                    variant="bodySm"
-                    className="font-semibold text-life-accent"
-                  >
-                    Done
-                  </LifeText>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-
-        <View className="gap-life-2">
-          <LifeText variant="bodySm" className="font-medium text-life-muted">
-            Time
-          </LifeText>
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => setShowTimePicker(true)}
-            className="rounded-life-md border border-life-border bg-life-surface p-life-4"
-          >
-            <LifeText variant="body">{formatTimeLabel(scheduledTime)}</LifeText>
-          </TouchableOpacity>
-          {showTimePicker && (
-            <View className="overflow-hidden rounded-life-md border border-life-border bg-life-surface p-life-3">
-              <DateTimePicker
-                value={scheduledTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                themeVariant="dark"
-                accentColor="#6366F1"
-                onChange={handleTimeChange}
-              />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={() => setShowTimePicker(false)}
-                  className="items-end pt-life-2"
-                >
-                  <LifeText
-                    variant="bodySm"
-                    className="font-semibold text-life-accent"
-                  >
-                    Done
-                  </LifeText>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-
-        <LifeInput
-          label="Duration (minutes)"
-          placeholder="30"
-          keyboardType="numeric"
-          value={durationMinutes}
-          onChangeText={setDurationMinutes}
-        />
-
-        <View className="gap-life-2">
-          <LifeText variant="bodySm" className="font-medium text-life-muted">
-            Photo
-          </LifeText>
-          {displayPhotoUri ? (
-            <View className="gap-life-2">
-              <Image
-                source={{ uri: displayPhotoUri }}
-                className="h-40 w-full rounded-life-md"
-                resizeMode="cover"
-              />
-              <TouchableOpacity
-                accessibilityRole="button"
-                onPress={handleRemovePhoto}
-              >
-                <LifeText
-                  variant="bodySm"
-                  className="font-semibold text-life-danger"
-                >
-                  Remove Photo
-                </LifeText>
-              </TouchableOpacity>
-            </View>
-          ) : (
+          <View className="gap-life-2">
+            <LifeText variant="bodySm" className="font-medium text-life-muted">
+              Due Date
+            </LifeText>
             <TouchableOpacity
               accessibilityRole="button"
-              onPress={handlePickPhoto}
-              className="items-center rounded-life-md border border-dashed border-life-border bg-life-surface p-life-6"
+              onPress={() => setShowDatePicker(true)}
+              className="rounded-life-md border border-life-border bg-life-surface p-life-4"
             >
-              <LifeText variant="bodySm" color="text-life-muted">
-                Tap to add a photo
+              <LifeText variant="body">{formatDateLabel(dueDate)}</LifeText>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <View className="overflow-hidden rounded-life-md border border-life-border bg-life-surface p-life-3">
+                <DateTimePicker
+                  value={dueDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  themeVariant="dark"
+                  accentColor="#6366F1"
+                  onChange={handleDateChange}
+                />
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => setShowDatePicker(false)}
+                    className="items-end pt-life-2"
+                  >
+                    <LifeText
+                      variant="bodySm"
+                      className="font-semibold text-life-accent"
+                    >
+                      Done
+                    </LifeText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+
+          <View className="gap-life-2">
+            <LifeText variant="bodySm" className="font-medium text-life-muted">
+              Time
+            </LifeText>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => setShowTimePicker(true)}
+              className="rounded-life-md border border-life-border bg-life-surface p-life-4"
+            >
+              <LifeText variant="body">
+                {formatTimeLabel(scheduledTime)}
+              </LifeText>
+            </TouchableOpacity>
+            {showTimePicker && (
+              <View className="overflow-hidden rounded-life-md border border-life-border bg-life-surface p-life-3">
+                <DateTimePicker
+                  value={scheduledTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  themeVariant="dark"
+                  accentColor="#6366F1"
+                  onChange={handleTimeChange}
+                />
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => setShowTimePicker(false)}
+                    className="items-end pt-life-2"
+                  >
+                    <LifeText
+                      variant="bodySm"
+                      className="font-semibold text-life-accent"
+                    >
+                      Done
+                    </LifeText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+
+          <LifeInput
+            label="Duration (minutes)"
+            placeholder="30"
+            keyboardType="numeric"
+            value={durationMinutes}
+            onChangeText={setDurationMinutes}
+          />
+
+          <View className="gap-life-2">
+            <LifeText variant="bodySm" className="font-medium text-life-muted">
+              Photo
+            </LifeText>
+            {displayPhotoUri ? (
+              <View className="gap-life-2">
+                <Image
+                  source={{ uri: displayPhotoUri }}
+                  className="h-40 w-full rounded-life-md"
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={handleRemovePhoto}
+                >
+                  <LifeText
+                    variant="bodySm"
+                    className="font-semibold text-life-danger"
+                  >
+                    Remove Photo
+                  </LifeText>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={handlePickPhoto}
+                className="items-center rounded-life-md border border-dashed border-life-border bg-life-surface p-life-6"
+              >
+                <LifeText variant="bodySm" color="text-life-muted">
+                  Tap to add a photo
+                </LifeText>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View className="gap-life-2">
+            <LifeText variant="bodySm" className="font-medium text-life-muted">
+              Priority
+            </LifeText>
+            <LifePills
+              options={PRIORITY_OPTIONS}
+              value={priorityOption}
+              onChange={setPriorityOption}
+            />
+          </View>
+
+          {isEdit && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              className="items-center"
+              onPress={handleDelete}
+            >
+              <LifeText
+                variant="bodySm"
+                className="font-semibold text-life-danger"
+              >
+                Delete Task
               </LifeText>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
 
-        <View className="gap-life-2">
-          <LifeText variant="bodySm" className="font-medium text-life-muted">
-            Priority
-          </LifeText>
-          <LifePills
-            options={PRIORITY_OPTIONS}
-            value={priorityOption}
-            onChange={setPriorityOption}
-          />
-        </View>
-
-        <View className="items-center pt-life-4">
+        <View className="items-center border-t border-life-border bg-life-bg px-life-5 pb-life-3 pt-life-3">
           <LifeButton
             title={loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Task'}
             disabled={loading}
@@ -482,22 +506,7 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
             fullWidth
           />
         </View>
-
-        {isEdit && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            className="items-center"
-            onPress={handleDelete}
-          >
-            <LifeText
-              variant="bodySm"
-              className="font-semibold text-life-danger"
-            >
-              Delete Task
-            </LifeText>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
