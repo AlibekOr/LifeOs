@@ -27,14 +27,21 @@ const LifeInput = ({
       )}
 
       <View
-        className={`h-[48px] flex-row items-center rounded-life-md border px-life-4 ${
+        className={`flex-row rounded-life-md border px-life-4 ${
+          props.multiline
+            ? 'min-h-[96px] items-start py-life-3'
+            : 'h-[48px] items-center'
+        } ${
           error
             ? 'border-life-danger bg-life-surface'
             : 'border-life-border bg-life-surface'
         } `}
       >
         <TextInput
-          className={'h-full flex-1 font-inter text-life-body text-life-text'}
+          className={`flex-1 font-inter text-life-body text-life-text ${
+            props.multiline ? '' : 'h-full'
+          }`}
+          textAlignVertical={props.multiline ? 'top' : 'center'}
           {...props}
           placeholderTextColor={'#9494A1'}
           placeholder={placeholder}

@@ -34,6 +34,9 @@ export type LifeIconName =
   | 'chevron-left'
   | 'trending-up'
   | 'pencil'
+  | 'map-pin'
+  | 'chevron-down'
+  | 'chevron-up'
   | 'x';
 
 type IconShape =
@@ -112,6 +115,14 @@ const ICONS: Record<LifeIconName, IconShape[]> = {
     ),
     path('m15 5 4 4'),
   ],
+  'map-pin': [
+    path(
+      'M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0',
+    ),
+    circle(12, 10, 3),
+  ],
+  'chevron-down': [path('m6 9 6 6 6-6')],
+  'chevron-up': [path('m18 15-6-6-6 6')],
   x: [path('M18 6 6 18'), path('m6 6 12 12')],
 };
 

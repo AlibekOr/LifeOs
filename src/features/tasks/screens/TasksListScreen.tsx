@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
 import LifeButton from '../../../shared/components/Button/LifeButton.tsx';
+import LifeSegmentedControl from '../../../shared/components/SegmentedControl/LifeSegmentedControl.tsx';
+import PlansView from '../../plans/components/PlansView.tsx';
 import TaskListItem from '../components/TaskListItem.tsx';
 import TaskSectionHeader from '../components/TaskSectionHeader.tsx';
 import PriorityFilterRow from '../components/PriorityFilterRow.tsx';
@@ -23,11 +25,29 @@ import { sortTasksCompletedLast } from '../utils/taskStatus.ts';
 import { MINUTE_MS, useNow } from '../../../hooks/useNow.ts';
 import type { TaskFilterPriority } from '../../../types/task.types.ts';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
+import type { TasksListTab } from '../../../app/navigation/types.ts';
 import type { TasksListScreenProps } from './type.ts';
 
-const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
+const TAB_OPTIONS: { value: TasksListTab; label: string }[] = [
+  { value: 'tasks', label: 'Tasks' },
+  { value: 'plans', label: 'Plans' },
+];
+
+const TasksListScreen = ({ navigation, route }: TasksListScreenProps) => {
+  const tabParam = route.params?.tab;
+  const [tab, setTab] = useState<TasksListTab>(tabParam ?? 'tasks');
   const [priorityFilter, setPriorityFilter] =
     useState<TaskFilterPriority>('All');
+
+  // Another screen (Home's "See all") asked for a tab; use it once, then clear
+  // it so switching tabs by hand is not overridden on the next render.
+  useEffect(() => {
+    if (tabParam) {
+      setTab(tabParam);
+      navigation.setParams({ tab: undefined });
+    }
+  }, [tabParam, navigation]);
+
   const { tasks, isLoading, isError, error, refetch, isRefetching } =
     useTasksWithPending();
   // Statuses (NOW, Overdue, Missed) change on minute boundaries.
@@ -91,20 +111,37 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
     navigation.navigate('TaskForm');
   };
 
+  const handleAddPlan = () => {
+    navigation.navigate('PlanForm');
+  };
+
+  const handleEditPlan = (planId: string) => {
+    navigation.navigate('PlanForm', { planId });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-life-bg" edges={['top']}>
       <View className="gap-life-4 px-life-5 pb-life-3 pt-life-3">
         <LifeText variant="h2" className="font-bold">
-          Tasks
+          {tab === 'plans' ? 'Plans' : 'Tasks'}
         </LifeText>
-        <PriorityFilterRow
-          value={priorityFilter}
-          onChange={setPriorityFilter}
+        <LifeSegmentedControl
+          options={TAB_OPTIONS}
+          value={tab}
+          onChange={setTab}
         />
+        {tab === 'tasks' ? (
+          <PriorityFilterRow
+            value={priorityFilter}
+            onChange={setPriorityFilter}
+          />
+        ) : null}
         <SyncStatusBanner />
       </View>
 
-      {isLoading ? (
+      {tab === 'plans' ? (
+        <PlansView onAddPlan={handleAddPlan} onEditPlan={handleEditPlan} />
+      ) : isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color="#6366F1" />
         </View>
@@ -174,7 +211,10 @@ const TasksListScreen = ({ navigation }: TasksListScreenProps) => {
           showsVerticalScrollIndicator={false}
         />
       )}
-      <LifeFab accessibilityLabel="Add task" onPress={handleAdd} />
+      <LifeFab
+        accessibilityLabel={tab === 'plans' ? 'Add plan' : 'Add task'}
+        onPress={tab === 'plans' ? handleAddPlan : handleAdd}
+      />
     </SafeAreaView>
   );
 };
