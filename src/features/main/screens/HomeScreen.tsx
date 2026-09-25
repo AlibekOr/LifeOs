@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeProgressRing from '../../../shared/components/ProgressRing/LifeProgressRing.tsx';
 import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
+import LifeSegmentedControl from '../../../shared/components/SegmentedControl/LifeSegmentedControl.tsx';
 import LifeIcon from '../../../assets/icons/LifeIcon.tsx';
 import { useNotifications } from '../../notifications/hooks/useNotifications.ts';
 import { useAuthStore } from '../../../services/storage/authStore.ts';
@@ -25,14 +26,31 @@ import {
   isTaskActive,
   sortTasksCompletedLast,
 } from '../../tasks/utils/taskStatus.ts';
+import UpcomingPlans from '../../plans/components/UpcomingPlans.tsx';
+import { usePlans } from '../../plans/hooks/usePlans.ts';
+import { usePlanRange } from '../../plans/hooks/usePlanRange.ts';
+import { selectUpcomingPlans } from '../../plans/utils/upcomingPlans.ts';
+import { currentYearMonth } from '../../finance/utils/month.ts';
 import SyncStatusBanner from '../components/SyncStatusBanner.tsx';
 import NowCard from '../components/NowCard.tsx';
+import AddActionSheet from '../components/AddActionSheet.tsx';
 import { useNowCardActions } from '../hooks/useNowCardActions.ts';
-import type { DisplayTask } from '../../../types/pendingSync.types.ts';
+import type {
+  DisplayPlan,
+  DisplayTask,
+} from '../../../types/pendingSync.types.ts';
 import type { HomeScreenProps } from './type.ts';
 
 // Hidden for now; the AI Advisor card will be reworked or removed later.
 const SHOW_AI_ADVISOR = false;
+
+type HomeFilter = 'all' | 'tasks' | 'plans';
+
+const FILTER_OPTIONS: { value: HomeFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'tasks', label: 'Tasks' },
+  { value: 'plans', label: 'Plans' },
+];
 
 function formatToday(date: Date) {
   return date.toLocaleDateString('en-US', {
@@ -75,6 +93,36 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   } = useTasksWithPending();
   const toggleCompletion = useToggleTaskCompletion();
   const nowCardActions = useNowCardActions();
+
+  const [filter, setFilter] = useState<HomeFilter>('all');
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
+  // Same range as the Plans tab, so both read one cached query.
+  const planRange = usePlanRange();
+  const { plans, refetch: refetchPlans } = usePlans(planRange);
+  const upcomingPlans = useMemo(
+    () => selectUpcomingPlans(plans ?? [], now),
+    [plans, now],
+  );
+  const showTasks = filter !== 'plans';
+  const showPlans = filter !== 'tasks';
+
+  const handleRefresh = () => {
+    refetch();
+    refetchPlans();
+  };
+
+  const handleEditPlan = (plan: DisplayPlan) =>
+    navigation.navigate('Tasks', {
+      screen: 'PlanForm',
+      params: { planId: plan.id },
+      initial: false,
+    });
+
+  const handleSeeAllPlans = () =>
+    navigation.navigate('Tasks', {
+      screen: 'TasksList',
+      params: { tab: 'plans' },
+    });
 
   const handleEditTask = (task: DisplayTask) =>
     // initial: false keeps TasksList underneath, as for the Add task button.
@@ -125,7 +173,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} />
         }
       >
         {/* Extra bottom space keeps Plan My Day and the last task clear of the FAB. */}
@@ -229,56 +277,73 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             </View>
           ) : null}
 
-          {/* Today's Schedule */}
-          <View className="gap-life-3">
-            <LifeText variant="h3" className="font-bold">
-              Today's Schedule
-            </LifeText>
+          <LifeSegmentedControl
+            options={FILTER_OPTIONS}
+            value={filter}
+            onChange={setFilter}
+          />
 
-            {isLoading ? (
-              <View className="items-center py-life-6">
-                <ActivityIndicator color="#6366F1" />
-              </View>
-            ) : isError ? (
-              <View className="gap-life-3 rounded-life-lg border border-life-border bg-life-surface p-life-4">
-                <LifeText variant="bodySm" color="text-life-danger">
-                  {error instanceof Error
-                    ? error.message
-                    : 'Failed to load tasks.'}
-                </LifeText>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={() => refetch()}
-                >
-                  <LifeText
-                    variant="bodySm"
-                    className="font-semibold text-life-accent"
-                  >
-                    Retry
+          {/* Today's Schedule */}
+          {showTasks ? (
+            <View className="gap-life-3">
+              <LifeText variant="h3" className="font-bold">
+                Today's Schedule
+              </LifeText>
+
+              {isLoading ? (
+                <View className="items-center py-life-6">
+                  <ActivityIndicator color="#6366F1" />
+                </View>
+              ) : isError ? (
+                <View className="gap-life-3 rounded-life-lg border border-life-border bg-life-surface p-life-4">
+                  <LifeText variant="bodySm" color="text-life-danger">
+                    {error instanceof Error
+                      ? error.message
+                      : 'Failed to load tasks.'}
                   </LifeText>
-                </TouchableOpacity>
-              </View>
-            ) : activeTasks.length === 0 ? (
-              <View className="items-center rounded-life-lg border border-life-border bg-life-surface p-life-6">
-                <LifeText variant="bodySm" color="text-life-muted">
-                  {totalTasks === 0
-                    ? 'No tasks scheduled for today.'
-                    : 'Nothing else scheduled for today.'}
-                </LifeText>
-              </View>
-            ) : (
-              <View className="gap-life-3">
-                {activeTasks.map(task => (
-                  <TaskListItem
-                    key={task.id}
-                    task={task}
-                    now={now}
-                    onToggleComplete={handleToggle}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => refetch()}
+                  >
+                    <LifeText
+                      variant="bodySm"
+                      className="font-semibold text-life-accent"
+                    >
+                      Retry
+                    </LifeText>
+                  </TouchableOpacity>
+                </View>
+              ) : activeTasks.length === 0 ? (
+                <View className="items-center rounded-life-lg border border-life-border bg-life-surface p-life-6">
+                  <LifeText variant="bodySm" color="text-life-muted">
+                    {totalTasks === 0
+                      ? 'No tasks scheduled for today.'
+                      : 'Nothing else scheduled for today.'}
+                  </LifeText>
+                </View>
+              ) : (
+                <View className="gap-life-3">
+                  {activeTasks.map(task => (
+                    <TaskListItem
+                      key={task.id}
+                      task={task}
+                      now={now}
+                      onToggleComplete={handleToggle}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {showPlans ? (
+            <UpcomingPlans
+              entries={upcomingPlans}
+              showEmpty={filter === 'plans'}
+              onSeeAll={handleSeeAllPlans}
+              onPressPlan={handleEditPlan}
+            />
+          ) : null}
 
           {/* Plan My Day */}
           <TouchableOpacity
@@ -294,12 +359,24 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </View>
       </ScrollView>
 
-      <LifeFab
-        accessibilityLabel="Add task"
-        // initial: false keeps TasksList underneath; otherwise the form would become
-        // the Tasks stack's only screen and the Tasks tab would open on it.
-        onPress={() =>
+      <LifeFab accessibilityLabel="Add" onPress={() => setAddSheetOpen(true)} />
+      {/* initial: false keeps the list underneath; otherwise the form would become
+          the stack's only screen and its tab would open on it. */}
+      <AddActionSheet
+        visible={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        onAddPlan={() =>
+          navigation.navigate('Tasks', { screen: 'PlanForm', initial: false })
+        }
+        onAddTask={() =>
           navigation.navigate('Tasks', { screen: 'TaskForm', initial: false })
+        }
+        onAddFinance={() =>
+          navigation.navigate('Finance', {
+            screen: 'TransactionForm',
+            params: { yearMonth: currentYearMonth() },
+            initial: false,
+          })
         }
       />
     </SafeAreaView>
