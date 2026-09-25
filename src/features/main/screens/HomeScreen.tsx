@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LifeText from '../../../shared/components/Typography/LifeText.tsx';
 import LifeProgressRing from '../../../shared/components/ProgressRing/LifeProgressRing.tsx';
-import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
+import LifeSpeedDial from '../../../shared/components/Fab/LifeSpeedDial.tsx';
 import LifeSegmentedControl from '../../../shared/components/SegmentedControl/LifeSegmentedControl.tsx';
 import LifeIcon from '../../../assets/icons/LifeIcon.tsx';
 import { useNotifications } from '../../notifications/hooks/useNotifications.ts';
@@ -33,7 +33,6 @@ import { selectUpcomingPlans } from '../../plans/utils/upcomingPlans.ts';
 import { currentYearMonth } from '../../finance/utils/month.ts';
 import SyncStatusBanner from '../components/SyncStatusBanner.tsx';
 import NowCard from '../components/NowCard.tsx';
-import AddActionSheet from '../components/AddActionSheet.tsx';
 import { useNowCardActions } from '../hooks/useNowCardActions.ts';
 import type {
   DisplayPlan,
@@ -95,7 +94,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const nowCardActions = useNowCardActions();
 
   const [filter, setFilter] = useState<HomeFilter>('all');
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
   // Same range as the Plans tab, so both read one cached query.
   const planRange = usePlanRange();
   const { plans, refetch: refetchPlans } = usePlans(planRange);
@@ -359,25 +357,40 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </View>
       </ScrollView>
 
-      <LifeFab accessibilityLabel="Add" onPress={() => setAddSheetOpen(true)} />
       {/* initial: false keeps the list underneath; otherwise the form would become
           the stack's only screen and its tab would open on it. */}
-      <AddActionSheet
-        visible={addSheetOpen}
-        onClose={() => setAddSheetOpen(false)}
-        onAddPlan={() =>
-          navigation.navigate('Tasks', { screen: 'PlanForm', initial: false })
-        }
-        onAddTask={() =>
-          navigation.navigate('Tasks', { screen: 'TaskForm', initial: false })
-        }
-        onAddFinance={() =>
-          navigation.navigate('Finance', {
-            screen: 'TransactionForm',
-            params: { yearMonth: currentYearMonth() },
-            initial: false,
-          })
-        }
+      <LifeSpeedDial
+        accessibilityLabel="Add"
+        actions={[
+          {
+            label: 'Plan',
+            icon: 'calendar',
+            onPress: () =>
+              navigation.navigate('Tasks', {
+                screen: 'PlanForm',
+                initial: false,
+              }),
+          },
+          {
+            label: 'Task',
+            icon: 'list-checks',
+            onPress: () =>
+              navigation.navigate('Tasks', {
+                screen: 'TaskForm',
+                initial: false,
+              }),
+          },
+          {
+            label: 'Finance',
+            icon: 'wallet',
+            onPress: () =>
+              navigation.navigate('Finance', {
+                screen: 'TransactionForm',
+                params: { yearMonth: currentYearMonth() },
+                initial: false,
+              }),
+          },
+        ]}
       />
     </SafeAreaView>
   );

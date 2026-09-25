@@ -35,6 +35,7 @@ export type LifeIconName =
   | 'trending-up'
   | 'pencil'
   | 'map-pin'
+  | 'calendar'
   | 'chevron-down'
   | 'chevron-up'
   | 'x';
@@ -120,6 +121,14 @@ const ICONS: Record<LifeIconName, IconShape[]> = {
       'M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0',
     ),
     circle(12, 10, 3),
+  ],
+  calendar: [
+    path('M8 2v4'),
+    path('M16 2v4'),
+    path(
+      'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    ),
+    path('M3 10h18'),
   ],
   'chevron-down': [path('m6 9 6 6 6-6')],
   'chevron-up': [path('m18 15-6-6-6 6')],

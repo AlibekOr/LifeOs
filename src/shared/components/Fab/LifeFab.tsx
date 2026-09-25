@@ -7,15 +7,23 @@ type LifeFabProps = {
   onPress: () => void;
   // Defaults to a plus icon.
   icon?: ReactNode;
+  // For a button that opens a menu: tells screen readers whether it is open.
+  expanded?: boolean;
 };
 
 // Floating "add" button pinned to the bottom-right of the nearest positioned
 // parent (a screen's root view). Screens must leave enough bottom padding in
 // their scrollable content so the last row can scroll clear of it.
-const LifeFab = ({ accessibilityLabel, onPress, icon }: LifeFabProps) => (
+const LifeFab = ({
+  accessibilityLabel,
+  onPress,
+  icon,
+  expanded,
+}: LifeFabProps) => (
   <TouchableOpacity
     accessibilityRole="button"
     accessibilityLabel={accessibilityLabel}
+    accessibilityState={expanded === undefined ? undefined : { expanded }}
     activeOpacity={0.85}
     onPress={onPress}
     className="absolute bottom-life-5 right-life-5 h-14 w-14 items-center justify-center rounded-full bg-life-primary"
