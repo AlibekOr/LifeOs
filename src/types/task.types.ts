@@ -12,6 +12,9 @@ export type Task = {
   attachment_path: string | null;
   // ISO timestamp of when the user pressed Start; null = not started.
   started_at: string | null;
+  // The goal (and optionally one of its milestones) this task counts towards.
+  goal_id: string | null;
+  milestone_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -25,6 +28,8 @@ export type CreateTaskInput = {
   attachment_path?: string | null;
   is_completed?: boolean;
   started_at?: string | null;
+  goal_id?: string | null;
+  milestone_id?: string | null;
 };
 
 export type UpdateTaskInput = Partial<CreateTaskInput>;

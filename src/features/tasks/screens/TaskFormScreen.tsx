@@ -26,6 +26,8 @@ import { useTasksWithPending } from '../hooks/useTasksWithPending.ts';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus.ts';
 import { workStartIfAhead } from '../../../utils/workStart.ts';
 import { useProfile } from '../../profile/hooks/useProfile.ts';
+import GoalPicker from '../../goals/components/GoalPicker.tsx';
+import { useGoalMilestones, useGoals } from '../../goals/hooks/useGoals.ts';
 import {
   MAX_ATTACHMENT_BYTES,
   taskAttachmentService,
@@ -96,6 +98,14 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
   });
   const [durationMinutes, setDurationMinutes] = useState('30');
   const [priorityOption, setPriorityOption] = useState<PriorityOption>('None');
+  const [goalId, setGoalId] = useState<string | null>(null);
+  const [milestoneId, setMilestoneId] = useState<string | null>(null);
+  const { data: goals } = useGoals();
+  const { data: milestones } = useGoalMilestones();
+  // Active goals, plus the task's current goal even if it has been completed.
+  const pickableGoals = (goals ?? []).filter(
+    goal => goal.completed_at === null || goal.id === goalId,
+  );
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -113,6 +123,8 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
       setScheduledTime(parseScheduledTime(existingTask.scheduled_time));
       setDurationMinutes(String(existingTask.duration_minutes));
       setPriorityOption(existingTask.priority ?? 'None');
+      setGoalId(existingTask.goal_id);
+      setMilestoneId(existingTask.milestone_id);
     }
   }, [existingTask, hydratedId]);
 
@@ -227,6 +239,8 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
       scheduled_time: toTimeString(scheduledTime),
       duration_minutes: parsedDuration,
       priority: priorityOption === 'None' ? null : priorityOption,
+      goal_id: goalId,
+      milestone_id: goalId ? milestoneId : null,
       due_date: toDateString(dueDate),
       attachment_path: keepingExistingAttachment
         ? existingTask?.attachment_path ?? null
@@ -488,6 +502,19 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
               onChange={setPriorityOption}
             />
           </View>
+
+          {pickableGoals.length > 0 ? (
+            <GoalPicker
+              goals={pickableGoals}
+              milestones={milestones ?? []}
+              goalId={goalId}
+              milestoneId={milestoneId}
+              onChange={(nextGoalId, nextMilestoneId) => {
+                setGoalId(nextGoalId);
+                setMilestoneId(nextMilestoneId);
+              }}
+            />
+          ) : null}
 
           {isEdit && (
             <TouchableOpacity

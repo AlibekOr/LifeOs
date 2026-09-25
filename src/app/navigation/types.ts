@@ -17,7 +17,7 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
-  Goals: undefined;
+  Goals: NavigatorScreenParams<GoalsStackParamList> | undefined;
   Finance: NavigatorScreenParams<FinanceStackParamList> | undefined;
   Profile: undefined;
   // Reached from the Home bell; hidden from the tab bar.
@@ -28,6 +28,12 @@ export type FinanceStackParamList = {
   FinanceOverview: undefined;
   // yearMonth ("YYYY-MM") tells the form which month's list holds the record.
   TransactionForm: { transactionId?: string; yearMonth?: string } | undefined;
+};
+
+export type GoalsStackParamList = {
+  GoalsList: undefined;
+  GoalDetail: { goalId: string };
+  GoalForm: { goalId?: string } | undefined;
 };
 
 export type TasksListTab = 'tasks' | 'plans';

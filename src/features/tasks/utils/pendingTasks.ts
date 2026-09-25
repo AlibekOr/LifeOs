@@ -21,6 +21,8 @@ export function buildLocalTask(entry: PendingTaskCreate): Task {
     due_date: payload.due_date ?? todayDateString(),
     attachment_path: payload.attachment_path ?? null,
     started_at: payload.started_at ?? null,
+    goal_id: payload.goal_id ?? null,
+    milestone_id: payload.milestone_id ?? null,
     created_at: entry.queuedAt,
     updated_at: entry.queuedAt,
   };

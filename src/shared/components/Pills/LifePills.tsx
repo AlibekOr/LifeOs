@@ -5,12 +5,15 @@ type LifePillsProps<T extends string> = {
   options: T[];
   value: T;
   onChange: (value: T) => void;
+  // Shows something other than the option itself, e.g. a title for an id.
+  getLabel?: (option: T) => string;
 };
 
 function LifePills<T extends string>({
   options,
   value,
   onChange,
+  getLabel,
 }: LifePillsProps<T>) {
   return (
     <View className="flex-row flex-wrap gap-life-2">
@@ -33,7 +36,7 @@ function LifePills<T extends string>({
               className="font-semibold"
               color={active ? 'text-life-text' : 'text-life-muted'}
             >
-              {option}
+              {getLabel ? getLabel(option) : option}
             </LifeText>
           </TouchableOpacity>
         );

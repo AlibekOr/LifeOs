@@ -8,10 +8,10 @@ import {
 } from '@react-navigation/native';
 import type { MainTabParamList } from './types.ts';
 import HomeScreen from '../../features/main/screens/HomeScreen.tsx';
-import ComingSoonView from '../../features/main/components/ComingSoonView.tsx';
 import LifeIcon from '../../assets/icons/LifeIcon.tsx';
 import type { LifeIconName } from '../../assets/icons/LifeIcon.tsx';
 import TasksNavigator from './TasksNavigator.tsx';
+import GoalsNavigator from './GoalsNavigator.tsx';
 import FinanceNavigator from './FinanceNavigator.tsx';
 import ProfileScreen from '../../features/profile/screens/ProfileScreen.tsx';
 import NotificationsScreen from '../../features/notifications/screens/NotificationsScreen.tsx';
@@ -21,8 +21,6 @@ import { usePlanReminderSync } from '../../features/plans/hooks/usePlanReminderS
 import { useNotificationTaps } from '../../features/notifications/hooks/useNotificationTaps.ts';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
-
-const GoalsScreen = () => <ComingSoonView title="Goals" />;
 
 const tabIcons: Record<keyof MainTabParamList, LifeIconName> = {
   Home: 'home',
@@ -40,12 +38,12 @@ const TAB_BAR_STYLE = {
 
 // Full-screen forms inside the Tasks stack hide the tab bar so their Save
 // button can sit at the bottom.
-const TAB_BAR_HIDDEN_ROUTES = ['TaskForm', 'PlanForm'];
+const TAB_BAR_HIDDEN_ROUTES = ['TaskForm', 'PlanForm', 'GoalForm'];
 
-const tasksTabOptions = ({
+const formTabOptions = ({
   route,
 }: {
-  route: RouteProp<MainTabParamList, 'Tasks'>;
+  route: RouteProp<MainTabParamList>;
 }): BottomTabNavigationOptions => ({
   tabBarStyle: TAB_BAR_HIDDEN_ROUTES.includes(
     getFocusedRouteNameFromRoute(route) ?? '',
@@ -85,9 +83,13 @@ const MainNavigator = () => {
       <Tab.Screen
         name="Tasks"
         component={TasksNavigator}
-        options={tasksTabOptions}
+        options={formTabOptions}
       />
-      <Tab.Screen name="Goals" component={GoalsScreen} />
+      <Tab.Screen
+        name="Goals"
+        component={GoalsNavigator}
+        options={formTabOptions}
+      />
       <Tab.Screen name="Finance" component={FinanceNavigator} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
       <Tab.Screen

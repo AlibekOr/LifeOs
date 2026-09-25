@@ -71,6 +71,8 @@ async function createTask(input: CreateTaskInput, id?: string): Promise<Task> {
       // An offline task can be started before its create is synced; that Start
       // is merged into the queued create and would be lost without this.
       started_at: input.started_at ?? null,
+      goal_id: input.goal_id ?? null,
+      milestone_id: input.milestone_id ?? null,
     })
     .select()
     .single();
