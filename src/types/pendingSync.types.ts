@@ -1,3 +1,4 @@
+import type { CreatePlanInput, Plan, UpdatePlanInput } from './plan.types.ts';
 import type { CreateTaskInput, Task, UpdateTaskInput } from './task.types.ts';
 import type {
   CreateTransactionInput,
@@ -7,7 +8,7 @@ import type {
 
 export type PendingSyncStatus = 'pending' | 'failed';
 
-export type PendingEntity = 'task' | 'transaction';
+export type PendingEntity = 'task' | 'transaction' | 'plan';
 
 type PendingEntryBase = {
   // Client-generated UUID, identical to the row id once saved on the server.
@@ -34,10 +35,20 @@ export type PendingTransactionEntry = PendingEntryBase & {
     | { operation: 'update'; payload: UpdateTransactionInput }
   );
 
-export type PendingEntry = PendingTaskEntry | PendingTransactionEntry;
+export type PendingPlanEntry = PendingEntryBase & { entity: 'plan' } & (
+    | { operation: 'create'; payload: CreatePlanInput }
+    | { operation: 'update'; payload: UpdatePlanInput }
+  );
+
+export type PendingEntry =
+  | PendingTaskEntry
+  | PendingTransactionEntry
+  | PendingPlanEntry;
 
 export type SyncStatus = 'synced' | PendingSyncStatus;
 
 export type DisplayTask = Task & { syncStatus: SyncStatus };
 
 export type DisplayTransaction = Transaction & { syncStatus: SyncStatus };
+
+export type DisplayPlan = Plan & { syncStatus: SyncStatus };

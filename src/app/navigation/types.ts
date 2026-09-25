@@ -18,7 +18,7 @@ export type MainTabParamList = {
   Home: undefined;
   Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
   Goals: undefined;
-  Finance: undefined;
+  Finance: NavigatorScreenParams<FinanceStackParamList> | undefined;
   Profile: undefined;
   // Reached from the Home bell; hidden from the tab bar.
   Notifications: undefined;
@@ -30,7 +30,11 @@ export type FinanceStackParamList = {
   TransactionForm: { transactionId?: string; yearMonth?: string } | undefined;
 };
 
+export type TasksListTab = 'tasks' | 'plans';
+
 export type TasksStackParamList = {
-  TasksList: undefined;
+  // `tab` opens the list on Tasks or Plans, e.g. from Home's "See all".
+  TasksList: { tab?: TasksListTab } | undefined;
   TaskForm: { taskId?: string } | undefined;
+  PlanForm: { planId?: string } | undefined;
 };

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { useEffect } from 'react';
 import { notificationService } from '../../../services/notification.service.ts';
+import { useForegroundCount } from '../../../hooks/useForegroundCount.ts';
 import {
   useReminderSettingsHydrated,
   useReminderSettingsStore,
@@ -14,16 +14,7 @@ export function useReminderSync(): void {
   const { tasks } = useTasksWithPending();
   const leadMinutes = useReminderSettingsStore(state => state.leadMinutes);
   const settingsReady = useReminderSettingsHydrated();
-  const [foregroundCount, setForegroundCount] = useState(0);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', state => {
-      if (state === 'active') {
-        setForegroundCount(count => count + 1);
-      }
-    });
-    return () => subscription.remove();
-  }, []);
+  const foregroundCount = useForegroundCount();
 
   useEffect(() => {
     if (!tasks || !settingsReady) {

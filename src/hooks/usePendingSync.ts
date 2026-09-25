@@ -7,7 +7,10 @@ import { usePendingSyncStore } from '../store/pendingSync.store.ts';
 import { taskKeys } from '../features/tasks/hooks/taskKeys.ts';
 import { financeKeys } from '../features/finance/hooks/financeKeys.ts';
 import { yearMonthOf } from '../features/finance/utils/month.ts';
+import { planKeys } from '../features/plans/hooks/planKeys.ts';
+import { planOverlapsRange } from '../features/plans/utils/pendingPlans.ts';
 import type { PendingEntry } from '../types/pendingSync.types.ts';
+import type { Plan } from '../types/plan.types.ts';
 import type { Task } from '../types/task.types.ts';
 import type { Transaction } from '../types/transaction.types.ts';
 import { useNetworkStatus } from './useNetworkStatus.ts';
@@ -25,6 +28,24 @@ function publishSyncedItem(queryClient: QueryClient, synced: SyncedItem) {
     queryClient.setQueryData<Task[]>(taskKeys.all, tasks =>
       tasks ? upsertById(tasks, synced.item) : tasks,
     );
+    return;
+  }
+  if (synced.entity === 'plan') {
+    // Same idea as transactions: an edit can move a plan out of a cached range.
+    queryClient
+      .getQueriesData<Plan[]>({ queryKey: planKeys.all })
+      .forEach(([queryKey, plans]) => {
+        if (!plans) {
+          return;
+        }
+        const range = { from: String(queryKey[1]), to: String(queryKey[2]) };
+        queryClient.setQueryData<Plan[]>(
+          queryKey,
+          planOverlapsRange(synced.item, range)
+            ? upsertById(plans, synced.item)
+            : plans.filter(item => item.id !== synced.item.id),
+        );
+      });
     return;
   }
   // The item's date may have moved it between months: place it in its own
@@ -59,6 +80,9 @@ export async function flushPendingEntries(
   }
   if (syncedItems.some(synced => synced.entity === 'transaction')) {
     await queryClient.invalidateQueries({ queryKey: financeKeys.all });
+  }
+  if (syncedItems.some(synced => synced.entity === 'plan')) {
+    await queryClient.invalidateQueries({ queryKey: planKeys.all });
   }
 }
 

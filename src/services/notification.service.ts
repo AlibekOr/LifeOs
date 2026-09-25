@@ -19,6 +19,14 @@ import {
   type AlertTask,
   type PlannedAlert,
 } from '../features/tasks/utils/taskAlerts.ts';
+import {
+  PLAN_ALERT_ID_PREFIX,
+  buildPlanAlert,
+  planAlertId,
+  selectPlanAlertsToSchedule,
+  type PlannedPlanAlert,
+  type ReminderPlan,
+} from '../features/plans/utils/planReminders.ts';
 
 // Android fixes a channel's sound when the channel is created, so a different
 // sound needs a new channel id (and the old channel is deleted).
@@ -80,6 +88,13 @@ function showNotificationsDisabledAlert(): void {
   );
 }
 
+function warnNotificationsDisabledOnce(): void {
+  if (!disabledAlertShown) {
+    disabledAlertShown = true;
+    showNotificationsDisabledAlert();
+  }
+}
+
 // Asks for notification permission and, if refused, explains how to enable it.
 // Used when the user turns reminders on, at the point of use.
 async function requestReminderPermission(): Promise<boolean> {
@@ -120,8 +135,38 @@ async function canUseExactAlarms(promptIfMissing: boolean): Promise<boolean> {
   return false;
 }
 
+// What is handed to the OS. `data` tells a tap where to go: task alerts carry
+// `taskId` and `kind` (start and end open Home), plan reminders carry `planId`.
+type ScheduledAlert = {
+  id: string;
+  title: string;
+  body: string | undefined;
+  at: Date;
+  data: Record<string, string>;
+};
+
+function fromTaskAlert(alert: PlannedAlert): ScheduledAlert {
+  return {
+    id: alert.id,
+    title: alert.title,
+    body: alert.body,
+    at: alert.at,
+    data: { taskId: alert.taskId, kind: alert.kind },
+  };
+}
+
+function fromPlanAlert(alert: PlannedPlanAlert): ScheduledAlert {
+  return {
+    id: alert.id,
+    title: alert.title,
+    body: alert.body,
+    at: alert.at,
+    data: { planId: alert.planId },
+  };
+}
+
 async function createAlert(
-  alert: PlannedAlert,
+  alert: ScheduledAlert,
   useExactAlarm: boolean,
 ): Promise<void> {
   const trigger: TimestampTrigger = {
@@ -131,14 +176,14 @@ async function createAlert(
       ? { alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE } }
       : {}),
   };
-  // A deterministic id per task and kind, so rescheduling replaces the alert.
+  // A deterministic id per task and kind (or per plan), so rescheduling replaces
+  // the alert.
   await notifee.createTriggerNotification(
     {
       id: alert.id,
       title: alert.title,
       body: alert.body,
-      // `kind` tells a tap where to go: start and end alerts open Home.
-      data: { taskId: alert.taskId, kind: alert.kind },
+      data: alert.data,
       android: {
         channelId: REMINDER_CHANNEL_ID,
         pressAction: { id: 'default' },
@@ -189,10 +234,7 @@ async function scheduleTaskReminder(task: AlertTask): Promise<void> {
 
   const permission = await requestNotificationPermission();
   if (permission !== 'granted') {
-    if (!disabledAlertShown) {
-      disabledAlertShown = true;
-      showNotificationsDisabledAlert();
-    }
+    warnNotificationsDisabledOnce();
     return;
   }
 
@@ -200,7 +242,7 @@ async function scheduleTaskReminder(task: AlertTask): Promise<void> {
     await ensureChannel();
     const useExactAlarm = await canUseExactAlarms(true);
     for (const alert of planned) {
-      await createAlert(alert, useExactAlarm);
+      await createAlert(fromTaskAlert(alert), useExactAlarm);
     }
   } catch (error) {
     console.error(error);
@@ -218,7 +260,10 @@ async function syncTaskReminders(tasks: readonly AlertTask[]): Promise<void> {
   try {
     const wantedIds = new Set(planned.map(alert => alert.id));
     const scheduledIds = await notifee.getTriggerNotificationIds();
-    const staleIds = scheduledIds.filter(id => !wantedIds.has(id));
+    // Plan reminders are managed by syncPlanReminders; they must survive here.
+    const staleIds = scheduledIds.filter(
+      id => !wantedIds.has(id) && !id.startsWith(PLAN_ALERT_ID_PREFIX),
+    );
     if (staleIds.length > 0) {
       await notifee.cancelTriggerNotifications(staleIds);
     }
@@ -229,7 +274,73 @@ async function syncTaskReminders(tasks: readonly AlertTask[]): Promise<void> {
     await ensureChannel();
     const useExactAlarm = await canUseExactAlarms(false);
     for (const alert of planned) {
-      await createAlert(alert, useExactAlarm);
+      await createAlert(fromTaskAlert(alert), useExactAlarm);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function cancelPlanReminder(planId: string): Promise<void> {
+  try {
+    await notifee.cancelTriggerNotifications([planAlertId(planId)]);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Brings one plan's reminder in line with its current state after the user
+// created, edited, completed, cancelled or restored it: removes it when it is no
+// longer wanted (no reminder, done, cancelled, already past) and (re)creates it
+// otherwise.
+async function schedulePlanReminder(plan: ReminderPlan): Promise<void> {
+  const alert = buildPlanAlert(plan, new Date());
+  if (!alert) {
+    await cancelPlanReminder(plan.id);
+    return;
+  }
+
+  const permission = await requestNotificationPermission();
+  if (permission !== 'granted') {
+    warnNotificationsDisabledOnce();
+    return;
+  }
+
+  try {
+    await ensureChannel();
+    const useExactAlarm = await canUseExactAlarms(true);
+    await createAlert(fromPlanAlert(alert), useExactAlarm);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Same idea as syncTaskReminders, for plans: adds reminders that are missing
+// (plans from another device, ones queued offline), removes those whose plan was
+// finished, changed or deleted. Only reminders within the near horizon exist.
+// Never prompts; it runs on app start and when the app returns to the foreground.
+async function syncPlanReminders(
+  plans: readonly ReminderPlan[],
+): Promise<void> {
+  const planned = selectPlanAlertsToSchedule(plans, new Date());
+
+  try {
+    const wantedIds = new Set(planned.map(alert => alert.id));
+    const scheduledIds = await notifee.getTriggerNotificationIds();
+    const staleIds = scheduledIds.filter(
+      id => id.startsWith(PLAN_ALERT_ID_PREFIX) && !wantedIds.has(id),
+    );
+    if (staleIds.length > 0) {
+      await notifee.cancelTriggerNotifications(staleIds);
+    }
+    if (planned.length === 0 || !(await hasNotificationPermission())) {
+      return;
+    }
+
+    await ensureChannel();
+    const useExactAlarm = await canUseExactAlarms(false);
+    for (const alert of planned) {
+      await createAlert(fromPlanAlert(alert), useExactAlarm);
     }
   } catch (error) {
     console.error(error);
@@ -294,6 +405,9 @@ export const notificationService = {
   cancelTaskReminder,
   cancelAllTaskReminders,
   syncTaskReminders,
+  schedulePlanReminder,
+  cancelPlanReminder,
+  syncPlanReminders,
   requestReminderPermission,
   playCelebrationSound,
 };

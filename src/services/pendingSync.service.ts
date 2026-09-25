@@ -1,4 +1,5 @@
 import { onlineManager } from '@tanstack/react-query';
+import { planService } from './plan.service.ts';
 import { taskService } from './task.service.ts';
 import { transactionService } from './transaction.service.ts';
 import {
@@ -6,6 +7,7 @@ import {
   waitForPendingSyncHydration,
 } from '../store/pendingSync.store.ts';
 import type { PendingEntry } from '../types/pendingSync.types.ts';
+import type { Plan } from '../types/plan.types.ts';
 import type { Task } from '../types/task.types.ts';
 import type { Transaction } from '../types/transaction.types.ts';
 
@@ -13,7 +15,8 @@ const MAX_SYNC_ATTEMPTS = 3;
 
 export type SyncedItem =
   | { entity: 'task'; item: Task }
-  | { entity: 'transaction'; item: Transaction };
+  | { entity: 'transaction'; item: Transaction }
+  | { entity: 'plan'; item: Plan };
 
 type OnSynced = (synced: SyncedItem) => void;
 
@@ -24,6 +27,13 @@ async function sendEntry(entry: PendingEntry): Promise<SyncedItem> {
         ? await taskService.createTask(entry.payload, entry.id)
         : await taskService.updateTask(entry.id, entry.payload);
     return { entity: 'task', item };
+  }
+  if (entry.entity === 'plan') {
+    const item =
+      entry.operation === 'create'
+        ? await planService.createPlan(entry.payload, entry.id)
+        : await planService.updatePlan(entry.id, entry.payload);
+    return { entity: 'plan', item };
   }
   const item =
     entry.operation === 'create'

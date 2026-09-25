@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import notifee, { EventType } from '@notifee/react-native';
-import { openTaskFromNotification } from '../utils/openTaskFromNotification.ts';
+import { openFromNotification } from '../utils/openFromNotification.ts';
 
-// Opens the task when a reminder is tapped: while the app is open, and when the
-// tap is what launched the app.
+// Opens the task or plan when a reminder is tapped: while the app is open, and
+// when the tap is what launched the app.
 export function useNotificationTaps(): void {
   useEffect(() => {
     let active = true;
@@ -12,7 +12,7 @@ export function useNotificationTaps(): void {
       .getInitialNotification()
       .then(initial => {
         if (active && initial) {
-          openTaskFromNotification(initial.notification.data);
+          openFromNotification(initial.notification.data);
         }
       })
       .catch(error => {
@@ -21,7 +21,7 @@ export function useNotificationTaps(): void {
 
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
-        openTaskFromNotification(detail.notification?.data);
+        openFromNotification(detail.notification?.data);
       }
     });
 

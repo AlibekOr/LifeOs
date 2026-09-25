@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand/react';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { PendingEntry } from '../types/pendingSync.types.ts';
+import type { CreatePlanInput, UpdatePlanInput } from '../types/plan.types.ts';
 import type { CreateTaskInput, UpdateTaskInput } from '../types/task.types.ts';
 import type {
   CreateTransactionInput,
@@ -14,12 +15,14 @@ type EnqueueCreateParams = EntryIdentity &
   (
     | { entity: 'task'; payload: CreateTaskInput }
     | { entity: 'transaction'; payload: CreateTransactionInput }
+    | { entity: 'plan'; payload: CreatePlanInput }
   );
 
 type EnqueueUpdateParams = EntryIdentity &
   (
     | { entity: 'task'; payload: UpdateTaskInput }
     | { entity: 'transaction'; payload: UpdateTransactionInput }
+    | { entity: 'plan'; payload: UpdatePlanInput }
   );
 
 type PersistedPendingSync = { entries: PendingEntry[] };
@@ -58,6 +61,16 @@ function newCreateEntry(params: EnqueueCreateParams): PendingEntry {
       ...freshMeta(),
     };
   }
+  if (params.entity === 'plan') {
+    return {
+      entity: 'plan',
+      operation: 'create',
+      id,
+      userId,
+      payload: params.payload,
+      ...freshMeta(),
+    };
+  }
   return {
     entity: 'transaction',
     operation: 'create',
@@ -73,6 +86,16 @@ function newUpdateEntry(params: EnqueueUpdateParams): PendingEntry {
   if (params.entity === 'task') {
     return {
       entity: 'task',
+      operation: 'update',
+      id,
+      userId,
+      payload: params.payload,
+      ...freshMeta(),
+    };
+  }
+  if (params.entity === 'plan') {
+    return {
+      entity: 'plan',
       operation: 'update',
       id,
       userId,
@@ -102,6 +125,11 @@ function mergeIntoEntry(
       : { ...entry, payload: { ...entry.payload, ...params.payload } };
   }
   if (entry.entity === 'transaction' && params.entity === 'transaction') {
+    return entry.operation === 'create'
+      ? { ...entry, payload: { ...entry.payload, ...params.payload } }
+      : { ...entry, payload: { ...entry.payload, ...params.payload } };
+  }
+  if (entry.entity === 'plan' && params.entity === 'plan') {
     return entry.operation === 'create'
       ? { ...entry, payload: { ...entry.payload, ...params.payload } }
       : { ...entry, payload: { ...entry.payload, ...params.payload } };
