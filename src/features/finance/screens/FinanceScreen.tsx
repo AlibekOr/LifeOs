@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -14,6 +15,8 @@ import LifePills from '../../../shared/components/Pills/LifePills.tsx';
 import LifeFab from '../../../shared/components/Fab/LifeFab.tsx';
 import SyncStatusBanner from '../../main/components/SyncStatusBanner.tsx';
 import { usePendingSyncStore } from '../../../store/pendingSync.store.ts';
+import { useHorizontalSwipe } from '../../../hooks/useHorizontalSwipe.ts';
+import { useSlideTransition } from '../../../hooks/useSlideTransition.ts';
 import type { DisplayTransaction } from '../../../types/pendingSync.types.ts';
 import SummaryCard from '../components/SummaryCard.tsx';
 import SpendingBreakdownCard from '../components/SpendingBreakdownCard.tsx';
@@ -29,6 +32,11 @@ import {
   formatMonthName,
   shiftYearMonth,
 } from '../utils/month.ts';
+import {
+  monthIndex,
+  stepOption,
+  swipeMonth,
+} from '../utils/swipeNavigation.ts';
 import type { FinanceScreenProps } from './type.ts';
 
 type TransactionFilter = 'All' | 'Expenses' | 'Income';
@@ -66,6 +74,20 @@ const FinanceScreen = ({ navigation }: FinanceScreenProps) => {
   } = useFinanceSummary(yearMonth);
   const retryEntry = usePendingSyncStore(state => state.retryEntry);
   const discardEntry = usePendingSyncStore(state => state.discardEntry);
+
+  // Swiping over the summary changes the month (left = next, right = previous);
+  // swiping over the transactions changes the filter the same way. The two
+  // areas are siblings, so a swipe only ever belongs to one of them.
+  const monthSwipeHandlers = useHorizontalSwipe({
+    onSwipeLeft: () => setYearMonth(month => swipeMonth(month, 1)),
+    onSwipeRight: () => setYearMonth(month => swipeMonth(month, -1)),
+  });
+  const filterSwipeHandlers = useHorizontalSwipe({
+    onSwipeLeft: () => setFilter(current => stepOption(FILTERS, current, 1)),
+    onSwipeRight: () => setFilter(current => stepOption(FILTERS, current, -1)),
+  });
+  const monthSlideStyle = useSlideTransition(monthIndex(yearMonth));
+  const filterSlideStyle = useSlideTransition(FILTERS.indexOf(filter));
 
   useEffect(() => {
     if (isError) {
@@ -247,11 +269,13 @@ const FinanceScreen = ({ navigation }: FinanceScreenProps) => {
             />
           </View>
         ) : null}
-
-        {renderTransactions()}
       </>
     );
   };
+
+  // The transactions are shown once there is something to show: not while
+  // loading and not when loading failed.
+  const showTransactions = !isLoading && !(isError && !transactions);
 
   return (
     <SafeAreaView className="flex-1 bg-life-bg" edges={['top']}>
@@ -264,19 +288,32 @@ const FinanceScreen = ({ navigation }: FinanceScreenProps) => {
       >
         {/* Extra bottom space keeps the last row clear of the floating button. */}
         <View className="gap-life-5 px-life-5 pb-[96px] pt-life-3">
-          <LifeText variant="h1" className="font-bold">
-            Finance
-          </LifeText>
+          <View className="gap-life-5" {...monthSwipeHandlers}>
+            <LifeText variant="h1" className="font-bold">
+              Finance
+            </LifeText>
 
-          <MonthNavigator
-            yearMonth={yearMonth}
-            onChange={setYearMonth}
-            onPressLabel={() => setMonthPickerVisible(true)}
-          />
+            <MonthNavigator
+              yearMonth={yearMonth}
+              onChange={setYearMonth}
+              onPressLabel={() => setMonthPickerVisible(true)}
+            />
 
-          <SyncStatusBanner />
+            <SyncStatusBanner />
 
-          {renderBody()}
+            <Animated.View style={monthSlideStyle}>
+              <View className="gap-life-5">{renderBody()}</View>
+            </Animated.View>
+          </View>
+
+          {showTransactions ? (
+            <Animated.View
+              style={filterSlideStyle}
+              {...(hasTransactions ? filterSwipeHandlers : {})}
+            >
+              {renderTransactions()}
+            </Animated.View>
+          ) : null}
         </View>
       </ScrollView>
 
