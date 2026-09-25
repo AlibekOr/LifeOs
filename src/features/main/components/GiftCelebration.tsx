@@ -135,6 +135,10 @@ const GiftCelebration = ({ celebration, onDone }: GiftCelebrationProps) => {
       ]),
     ]);
 
+    // The "congratulations" sound starts as soon as the gift appears. Waiting for
+    // the shake to finish made it arrive about a second late.
+    notificationService.playCelebrationSound();
+
     AccessibilityInfo.isReduceMotionEnabled().then(reduceMotion => {
       if (cancelled) {
         return;
@@ -142,7 +146,6 @@ const GiftCelebration = ({ celebration, onDone }: GiftCelebrationProps) => {
       if (reduceMotion) {
         // Straight to the finished state, without any movement.
         [appear, open, burst, reveal].forEach(value => value.setValue(1));
-        notificationService.playCelebrationSound();
         setCanContinue(true);
         return;
       }
@@ -150,8 +153,6 @@ const GiftCelebration = ({ celebration, onDone }: GiftCelebrationProps) => {
         if (!introFinished || cancelled) {
           return;
         }
-        // The "congratulations" sound goes with the lid flying off.
-        notificationService.playCelebrationSound();
         opening.start(({ finished }) => {
           if (finished && !cancelled) {
             setCanContinue(true);

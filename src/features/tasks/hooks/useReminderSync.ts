@@ -16,6 +16,11 @@ export function useReminderSync(): void {
   const settingsReady = useReminderSettingsHydrated();
   const foregroundCount = useForegroundCount();
 
+  // Gets the celebration sound ready, so the first gift does not wait for it.
+  useEffect(() => {
+    notificationService.prepareCelebrationSound();
+  }, []);
+
   useEffect(() => {
     if (!tasks || !settingsReady) {
       return;

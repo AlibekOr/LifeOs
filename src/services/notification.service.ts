@@ -347,24 +347,49 @@ async function syncPlanReminders(
   }
 }
 
-// Plays the "congratulations" sound as the gift opens. It goes through a local
+let celebrationChannelReady = false;
+
+// Android reads the sound from the channel, which only has to be created once.
+// Doing it in advance (see prepareCelebrationSound) keeps the first celebration
+// from waiting for it.
+async function ensureCelebrationChannel(): Promise<void> {
+  if (Platform.OS !== 'android' || celebrationChannelReady) {
+    return;
+  }
+  await notifee.createChannel({
+    id: CELEBRATION_CHANNEL_ID,
+    name: 'Celebration',
+    importance: AndroidImportance.DEFAULT,
+    sound: ANDROID_CELEBRATION_SOUND,
+    vibration: false,
+  });
+  celebrationChannelReady = true;
+}
+
+// Called at app start so the celebration sound can begin without delay.
+async function prepareCelebrationSound(): Promise<void> {
+  try {
+    await ensureCelebrationChannel();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Plays the "congratulations" sound as the gift appears. It goes through a local
 // notification so no audio library is needed: on iOS it is sound only while the
 // app is open (no banner); Android must post a notification for the sound, so it
 // is low-key (no pop-up) and removes itself. Never prompts for permission, and
 // never breaks the celebration: without permission it is simply silent.
 async function playCelebrationSound(): Promise<void> {
   try {
-    if (!(await hasNotificationPermission())) {
+    // Checked together: the channel is needed anyway, and waiting for the
+    // permission first only delayed the sound.
+    const [permitted] = await Promise.all([
+      hasNotificationPermission(),
+      ensureCelebrationChannel(),
+    ]);
+    if (!permitted) {
       return;
-    }
-    if (Platform.OS === 'android') {
-      await notifee.createChannel({
-        id: CELEBRATION_CHANNEL_ID,
-        name: 'Celebration',
-        importance: AndroidImportance.DEFAULT,
-        sound: ANDROID_CELEBRATION_SOUND,
-        vibration: false,
-      });
     }
     await notifee.displayNotification({
       id: CELEBRATION_NOTIFICATION_ID,
@@ -410,4 +435,5 @@ export const notificationService = {
   syncPlanReminders,
   requestReminderPermission,
   playCelebrationSound,
+  prepareCelebrationSound,
 };
