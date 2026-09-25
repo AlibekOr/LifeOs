@@ -1,4 +1,8 @@
 import type { CreatePlanInput, Plan } from '../../../types/plan.types.ts';
+import {
+  DEFAULT_WORK_START_TIME,
+  workStartIfAhead,
+} from '../../../utils/workStart.ts';
 import { addDays, toDateString } from './planDates.ts';
 
 export type TimedReminder = 'None' | '15 min' | '1 h' | '1 day';
@@ -43,7 +47,6 @@ const REMINDER_MINUTES: Record<Exclude<TimedReminder, 'None'>, number> = {
   '1 day': 24 * 60,
 };
 
-export const DEFAULT_ALL_DAY_REMIND_TIME = '09:00:00';
 export const TITLE_MAX_LENGTH = 120;
 export const LOCATION_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 1000;
@@ -59,17 +62,6 @@ export function dateFromString(date: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function timeFromString(time: string): Date {
-  const [hours, minutes] = time.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return date;
-}
-
-export function timeToString(date: Date): string {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-
 // Stops at 23:59: a plan never runs past midnight by accident. Overnight plans
 // use "Multiple days" with the next day as the end date.
 export function addMinutesToTime(time: string, minutes: number): string {
@@ -78,9 +70,16 @@ export function addMinutesToTime(time: string, minutes: number): string {
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}:00`;
 }
 
-export function defaultPlanFormValues(now: Date): PlanFormValues {
+// New plans start when the working day starts, if that is still ahead today;
+// otherwise at the next full hour. `workStart` comes from the user's profile.
+export function defaultPlanFormValues(
+  now: Date,
+  workStart?: string | null,
+): PlanFormValues {
   const planDate = toDateString(now);
-  const startTime = `${pad(Math.min(now.getHours() + 1, 23))}:00:00`;
+  const startTime =
+    workStartIfAhead(now, workStart) ??
+    `${pad(Math.min(now.getHours() + 1, 23))}:00:00`;
   return {
     title: '',
     location: '',
@@ -94,7 +93,7 @@ export function defaultPlanFormValues(now: Date): PlanFormValues {
     endTime: addMinutesToTime(startTime, 60),
     reminder: 'None',
     hasAllDayReminder: false,
-    remindTime: DEFAULT_ALL_DAY_REMIND_TIME,
+    remindTime: workStart ?? DEFAULT_WORK_START_TIME,
   };
 }
 
@@ -108,8 +107,11 @@ function reminderFromMinutes(minutes: number | null): TimedReminder {
   return match ? match[0] : 'None';
 }
 
-export function planToFormValues(plan: Plan): PlanFormValues {
-  const startTime = plan.plan_time ?? '09:00:00';
+export function planToFormValues(
+  plan: Plan,
+  workStart?: string | null,
+): PlanFormValues {
+  const startTime = plan.plan_time ?? workStart ?? DEFAULT_WORK_START_TIME;
   return {
     title: plan.title,
     location: plan.location ?? '',
@@ -123,7 +125,7 @@ export function planToFormValues(plan: Plan): PlanFormValues {
     endTime: plan.plan_end_time ?? addMinutesToTime(startTime, 60),
     reminder: reminderFromMinutes(plan.remind_minutes_before),
     hasAllDayReminder: plan.remind_time !== null,
-    remindTime: plan.remind_time ?? DEFAULT_ALL_DAY_REMIND_TIME,
+    remindTime: plan.remind_time ?? workStart ?? DEFAULT_WORK_START_TIME,
   };
 }
 

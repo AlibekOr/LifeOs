@@ -15,6 +15,8 @@ import LifeButton from '../../../shared/components/Button/LifeButton.tsx';
 import LifePills from '../../../shared/components/Pills/LifePills.tsx';
 import LifeDateTimeField from '../../../shared/components/DateTimeField/LifeDateTimeField.tsx';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus.ts';
+import { timeFromString, timeToString } from '../../../utils/timeOfDay.ts';
+import { useProfile } from '../../profile/hooks/useProfile.ts';
 import { PlanOverlapError } from '../../../services/plan.service.ts';
 import {
   useCreatePlan,
@@ -35,8 +37,6 @@ import {
   defaultPlanFormValues,
   effectiveEndDate,
   planToFormValues,
-  timeFromString,
-  timeToString,
   validatePlanForm,
   withMultiDay,
   withPlanDate,
@@ -65,6 +65,8 @@ const PlanFormScreen = ({ navigation, route }: PlanFormScreenProps) => {
   const planId = route.params?.planId;
   const isEdit = Boolean(planId);
 
+  const { data: profile } = useProfile();
+  const workStart = profile?.work_start_time;
   const range = usePlanRange();
   const { plans, isLoading } = usePlans(range);
   const { isOnline } = useNetworkStatus();
@@ -79,7 +81,7 @@ const PlanFormScreen = ({ navigation, route }: PlanFormScreenProps) => {
   const [today] = useState(() => toDateString(new Date()));
   const tomorrow = addDays(today, 1);
   const [values, setValues] = useState<PlanFormValues>(() =>
-    defaultPlanFormValues(new Date()),
+    defaultPlanFormValues(new Date(), workStart),
   );
   const [titleTouched, setTitleTouched] = useState(false);
   const [customDate, setCustomDate] = useState(false);
@@ -90,12 +92,12 @@ const PlanFormScreen = ({ navigation, route }: PlanFormScreenProps) => {
 
   useEffect(() => {
     if (existingPlan && existingPlan.id !== hydratedId) {
-      const next = planToFormValues(existingPlan);
+      const next = planToFormValues(existingPlan, workStart);
       setHydratedId(existingPlan.id);
       setValues(next);
       setCustomDate(next.planDate !== today && next.planDate !== tomorrow);
     }
-  }, [existingPlan, hydratedId, today, tomorrow]);
+  }, [existingPlan, hydratedId, today, tomorrow, workStart]);
 
   const errors = validatePlanForm(values);
   const input = useMemo(() => buildPlanInput(values), [values]);

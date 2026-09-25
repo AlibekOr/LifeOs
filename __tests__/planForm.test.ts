@@ -3,7 +3,6 @@ import {
   buildPlanInput,
   defaultPlanFormValues,
   planToFormValues,
-  timeToString,
   validatePlanForm,
   withMultiDay,
   withPlanDate,
@@ -57,16 +56,30 @@ describe('defaultPlanFormValues', () => {
       '23:00:00',
     );
   });
+
+  it('starts at the work start time while it is still ahead today', () => {
+    const values = defaultPlanFormValues(
+      new Date(2026, 9, 4, 7, 30),
+      '08:00:00',
+    );
+    expect(values.startTime).toBe('08:00:00');
+    expect(values.endTime).toBe('09:00:00');
+  });
+
+  it('falls back to the next full hour once the work start has passed', () => {
+    expect(defaultPlanFormValues(NOW, '08:00:00').startTime).toBe('15:00:00');
+  });
+
+  it("uses the work start time for an all-day plan's reminder", () => {
+    expect(defaultPlanFormValues(NOW, '10:00:00').remindTime).toBe('10:00:00');
+    expect(defaultPlanFormValues(NOW).remindTime).toBe('09:00:00');
+  });
 });
 
 describe('time helpers', () => {
   it('adds minutes but never runs past 23:59', () => {
     expect(addMinutesToTime('09:00:00', 60)).toBe('10:00:00');
     expect(addMinutesToTime('23:30:00', 60)).toBe('23:59:00');
-  });
-
-  it('formats a picked time as HH:MM:00', () => {
-    expect(timeToString(new Date(2026, 9, 4, 7, 5))).toBe('07:05:00');
   });
 });
 
@@ -218,6 +231,14 @@ describe('planToFormValues', () => {
       remind_minutes_before: 1440,
       remind_time: null,
     });
+  });
+
+  it('offers the work start time as the reminder time of an all-day plan', () => {
+    expect(planToFormValues(plan(), '08:00:00').remindTime).toBe('08:00:00');
+    expect(
+      planToFormValues(plan({ remind_time: '10:00:00' }), '08:00:00')
+        .remindTime,
+    ).toBe('10:00:00');
   });
 
   it('round-trips an all-day plan with a reminder time', () => {

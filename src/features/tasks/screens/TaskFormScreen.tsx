@@ -24,6 +24,8 @@ import {
 } from '../hooks/useTasks.ts';
 import { useTasksWithPending } from '../hooks/useTasksWithPending.ts';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus.ts';
+import { workStartIfAhead } from '../../../utils/workStart.ts';
+import { useProfile } from '../../profile/hooks/useProfile.ts';
 import {
   MAX_ATTACHMENT_BYTES,
   taskAttachmentService,
@@ -76,6 +78,7 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
 
   const { tasks } = useTasksWithPending();
   const { isOnline } = useNetworkStatus();
+  const { data: profile } = useProfile();
   const existingTask = taskId
     ? tasks?.find(task => task.id === taskId)
     : undefined;
@@ -86,7 +89,11 @@ const TaskFormScreen = ({ navigation, route }: TaskFormScreenProps) => {
 
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState(() => new Date());
-  const [scheduledTime, setScheduledTime] = useState(() => new Date());
+  // A new task starts when the working day starts, if that is still ahead today.
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const workStart = workStartIfAhead(new Date(), profile?.work_start_time);
+    return workStart ? parseScheduledTime(workStart) : new Date();
+  });
   const [durationMinutes, setDurationMinutes] = useState('30');
   const [priorityOption, setPriorityOption] = useState<PriorityOption>('None');
   const [loading, setLoading] = useState(false);

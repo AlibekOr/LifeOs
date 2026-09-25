@@ -21,7 +21,9 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: (input: UpdateProfileInput) =>
       profileService.updateProfile(userId as string, input),
-    onSuccess: () => {
+    onSuccess: updatedProfile => {
+      // Show the saved row at once instead of waiting for the refetch.
+      queryClient.setQueryData(profileKeys.all, updatedProfile);
       queryClient.invalidateQueries({ queryKey: profileKeys.all });
     },
   });

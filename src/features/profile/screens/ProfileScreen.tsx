@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../services/storage/authStore.ts';
 import { authService } from '../../../services/auth.service.ts';
 import { useProfile } from '../hooks/useProfile.ts';
 import ReminderSettingsCard from '../components/ReminderSettingsCard.tsx';
+import WorkStartCard from '../components/WorkStartCard.tsx';
 
 const ProfileScreen = () => {
   const handleLogOut = async () => {
@@ -52,6 +53,8 @@ const ProfileScreen = () => {
             )}
           </View>
         </View>
+
+        <WorkStartCard />
 
         <ReminderSettingsCard />
 
