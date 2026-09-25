@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   RefreshControl,
   SectionList,
+  StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -23,6 +25,8 @@ import { usePendingSyncStore } from '../../../store/pendingSync.store.ts';
 import { groupTasksByDate } from '../utils/groupTasksByDate.ts';
 import { sortTasksCompletedLast } from '../utils/taskStatus.ts';
 import { MINUTE_MS, useNow } from '../../../hooks/useNow.ts';
+import { useHorizontalSwipe } from '../../../hooks/useHorizontalSwipe.ts';
+import { useSlideTransition } from '../../../hooks/useSlideTransition.ts';
 import type { TaskFilterPriority } from '../../../types/task.types.ts';
 import type { DisplayTask } from '../../../types/pendingSync.types.ts';
 import type { TasksListTab } from '../../../app/navigation/types.ts';
@@ -33,11 +37,25 @@ const TAB_OPTIONS: { value: TasksListTab; label: string }[] = [
   { value: 'plans', label: 'Plans' },
 ];
 
+const styles = StyleSheet.create({
+  content: { flex: 1 },
+});
+
 const TasksListScreen = ({ navigation, route }: TasksListScreenProps) => {
   const tabParam = route.params?.tab;
   const [tab, setTab] = useState<TasksListTab>(tabParam ?? 'tasks');
   const [priorityFilter, setPriorityFilter] =
     useState<TaskFilterPriority>('All');
+
+  // Plans sit to the right of Tasks in the switch: drag the content left to
+  // reach them, right to come back.
+  const swipeHandlers = useHorizontalSwipe({
+    onSwipeLeft: () => setTab('plans'),
+    onSwipeRight: () => setTab('tasks'),
+  });
+
+  // The list slides in from the side of the tab that was chosen.
+  const slideStyle = useSlideTransition(tab === 'plans' ? 1 : 0);
 
   // Another screen (Home's "See all") asked for a tab; use it once, then clear
   // it so switching tabs by hand is not overridden on the next render.
@@ -120,7 +138,11 @@ const TasksListScreen = ({ navigation, route }: TasksListScreenProps) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-life-bg" edges={['top']}>
+    <SafeAreaView
+      className="flex-1 bg-life-bg"
+      edges={['top']}
+      {...swipeHandlers}
+    >
       <View className="gap-life-4 px-life-5 pb-life-3 pt-life-3">
         <LifeText variant="h2" className="font-bold">
           {tab === 'plans' ? 'Plans' : 'Tasks'}
@@ -139,78 +161,84 @@ const TasksListScreen = ({ navigation, route }: TasksListScreenProps) => {
         <SyncStatusBanner />
       </View>
 
-      {tab === 'plans' ? (
-        <PlansView onAddPlan={handleAddPlan} onEditPlan={handleEditPlan} />
-      ) : isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#6366F1" />
-        </View>
-      ) : isError ? (
-        <View className="gap-life-3 px-life-5">
-          <View className="gap-life-3 rounded-life-lg border border-life-border bg-life-surface p-life-4">
-            <LifeText variant="bodySm" color="text-life-danger">
-              {error instanceof Error ? error.message : 'Failed to load tasks.'}
-            </LifeText>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => refetch()}
-            >
-              <LifeText
-                variant="bodySm"
-                className="font-semibold text-life-accent"
-              >
-                Retry
-              </LifeText>
-            </TouchableOpacity>
+      <Animated.View style={[styles.content, slideStyle]}>
+        {tab === 'plans' ? (
+          <PlansView onAddPlan={handleAddPlan} onEditPlan={handleEditPlan} />
+        ) : isLoading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color="#6366F1" />
           </View>
-        </View>
-      ) : sections.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-life-5">
-          <View className="w-full items-center rounded-life-lg border border-life-border bg-life-surface p-life-6">
-            <LifeText variant="bodySm" color="text-life-muted">
-              {priorityFilter === 'All'
-                ? 'No tasks yet. Tap + to add one.'
-                : `No ${priorityFilter} priority tasks.`}
-            </LifeText>
-            {priorityFilter !== 'All' ? (
-              <View className="w-full pt-life-4">
-                <LifeButton
-                  title="Show all"
-                  onPress={() => setPriorityFilter('All')}
-                  fullWidth
+        ) : isError ? (
+          <View className="gap-life-3 px-life-5">
+            <View className="gap-life-3 rounded-life-lg border border-life-border bg-life-surface p-life-4">
+              <LifeText variant="bodySm" color="text-life-danger">
+                {error instanceof Error
+                  ? error.message
+                  : 'Failed to load tasks.'}
+              </LifeText>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => refetch()}
+              >
+                <LifeText
+                  variant="bodySm"
+                  className="font-semibold text-life-accent"
+                >
+                  Retry
+                </LifeText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : sections.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-life-5">
+            <View className="w-full items-center rounded-life-lg border border-life-border bg-life-surface p-life-6">
+              <LifeText variant="bodySm" color="text-life-muted">
+                {priorityFilter === 'All'
+                  ? 'No tasks yet. Tap + to add one.'
+                  : `No ${priorityFilter} priority tasks.`}
+              </LifeText>
+              {priorityFilter !== 'All' ? (
+                <View className="w-full pt-life-4">
+                  <LifeButton
+                    title="Show all"
+                    onPress={() => setPriorityFilter('All')}
+                    fullWidth
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={item => item.id}
+            contentContainerClassName="px-life-5 pb-[96px]"
+            renderSectionHeader={({ section }) => (
+              <TaskSectionHeader
+                label={section.label}
+                completed={
+                  section.data.filter(task => task.is_completed).length
+                }
+                total={section.data.length}
+              />
+            )}
+            renderItem={({ item }) => (
+              <View className="pb-life-3">
+                <TaskListItem
+                  task={item}
+                  now={now}
+                  onToggleComplete={handleToggle}
+                  onPress={handlePress}
                 />
               </View>
-            ) : null}
-          </View>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={item => item.id}
-          contentContainerClassName="px-life-5 pb-[96px]"
-          renderSectionHeader={({ section }) => (
-            <TaskSectionHeader
-              label={section.label}
-              completed={section.data.filter(task => task.is_completed).length}
-              total={section.data.length}
-            />
-          )}
-          renderItem={({ item }) => (
-            <View className="pb-life-3">
-              <TaskListItem
-                task={item}
-                now={now}
-                onToggleComplete={handleToggle}
-                onPress={handlePress}
-              />
-            </View>
-          )}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+            )}
+            refreshControl={
+              <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+            }
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </Animated.View>
       <LifeFab
         accessibilityLabel={tab === 'plans' ? 'Add plan' : 'Add task'}
         onPress={tab === 'plans' ? handleAddPlan : handleAdd}
